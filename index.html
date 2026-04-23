@@ -31,7 +31,7 @@ body.dark{
 
 body{
   margin:0;
-  font-family:'Paperozi', sans-serif;
+  font-family:'Paperozi';
   background:var(--bg);
   color:var(--text);
 }
@@ -39,47 +39,31 @@ body{
 /* HEADER */
 .header{
   display:flex;
-  justify-content:space-between;
   align-items:center;
+  justify-content:space-between;
   padding:12px;
   background:var(--card);
+}
+
+.left{
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 
 .title{
   font-family:'Ria';
   font-size:20px;
+  white-space:nowrap;
 }
 
-/* 메뉴 버튼 */
+/* MENU BUTTON */
 .menuBtn{
-  display:none;
   font-size:22px;
   background:none;
   border:none;
-}
-
-/* USER */
-.user-list{
-  display:flex;
-  gap:12px;
-}
-
-.user{
-  display:flex;
-  align-items:center;
-  gap:6px;
-}
-
-.dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
-}
-
-@keyframes pulse{
-  0%{transform:scale(1);}
-  50%{transform:scale(1.4);}
-  100%{transform:scale(1);}
+  cursor:pointer;
+  color:var(--text);
 }
 
 /* STORY */
@@ -101,7 +85,6 @@ body{
   padding:6px;
   cursor:pointer;
 }
-
 .line:hover{
   background:rgba(79,124,255,0.1);
 }
@@ -111,8 +94,7 @@ body{
   position:fixed;
   bottom:20px;
   right:20px;
-  width:60px;
-  height:60px;
+  width:60px;height:60px;
   border-radius:50%;
   font-size:30px;
   background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
@@ -128,7 +110,6 @@ body{
   display:none;
   background:rgba(0,0,0,0.5);
 }
-
 .modal-box{
   background:var(--card);
   width:300px;
@@ -137,24 +118,32 @@ body{
   border-radius:12px;
 }
 
-/* 📱 MOBILE */
+/* MOBILE */
 @media (max-width:768px){
-
   #story{
     flex-direction:column;
     overflow-x:hidden;
   }
-
-  .user-list{
-    display:none;
-  }
-
-  .menuBtn{
-    display:block;
-  }
 }
 
-/* 📱 SIDE MENU (덮어쓰기 방식) */
+/* OVERLAY */
+#overlay{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  backdrop-filter:blur(10px);
+  background:rgba(0,0,0,0.2);
+  opacity:0;
+  pointer-events:none;
+  transition:0.3s;
+  z-index:998;
+}
+#overlay.open{
+  opacity:1;
+  pointer-events:auto;
+}
+
+/* SIDE MENU */
 #sideMenu{
   position:fixed;
   top:0;
@@ -162,12 +151,11 @@ body{
   width:260px;
   height:100%;
   background:var(--card);
-  box-shadow:2px 0 12px rgba(0,0,0,0.15);
   padding:20px;
-  transition:0.3s;
+  transition:0.35s cubic-bezier(.4,0,.2,1);
   z-index:999;
+  box-shadow:2px 0 20px rgba(0,0,0,0.2);
 }
-
 #sideMenu.open{
   left:0;
 }
@@ -180,20 +168,44 @@ body{
 
 .online{color:#4cd964;}
 .offline{color:#aaa;}
+
+/* MENU LINK */
+.menuLink{
+  display:block;
+  padding:12px;
+  border-radius:10px;
+  background:rgba(79,124,255,0.1);
+  text-decoration:none;
+  color:var(--text);
+  font-size:14px;
+}
+.menuLink:hover{
+  background:rgba(79,124,255,0.2);
+}
+
+.closeBtn{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#ff4d4d;
+  color:white;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <button class="menuBtn" onclick="toggleMenu()">☰</button>
-  <div class="title">KST Nextory</div>
-  <div class="user-list" id="users"></div>
-  <button onclick="changeUser()">👤</button>
-  <button onclick="toggleDark()">🌙</button>
+  <div class="left">
+    <button class="menuBtn" onclick="toggleMenu()">☰</button>
+    <div class="title">KST Nextory</div>
+  </div>
 </div>
 
-<!-- 📱 SIDE MENU -->
+<div id="overlay" onclick="closeMenu()"></div>
+
 <div id="sideMenu">
   <h3>사용자</h3>
   <div id="menuUsers"></div>
@@ -203,12 +215,23 @@ body{
   <button onclick="toggleDark()">🌙 다크모드</button>
   <br><br>
   <button onclick="changeUser()">👤 계정 변경</button>
+
+  <hr>
+
+  <a href="https://u2mkst.github.io/ksthub/" target="_blank" class="menuLink">
+    우리학교 급식 · 시간표 보러가기
+  </a>
+
+  <br><br>
+
+  <button class="closeBtn" onclick="closeMenu()">
+    fldzm cnrkgownj
+  </button>
 </div>
 
 <div id="story"></div>
 <button id="fab">＋</button>
 
-<!-- MODAL -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
@@ -232,11 +255,10 @@ const db = firebase.firestore();
 const docRef = db.collection("stories").doc("main");
 
 /* STATE */
-let state = {
+let state={
   themes:[],
   users:[],
   colors:{},
-  dark:false,
   currentUser:"",
   onlineUsers:{}
 };
@@ -253,20 +275,11 @@ docRef.onSnapshot(doc=>{
     state.themes=d.themes||[];
     state.users=d.users||[];
     state.colors=d.colors||{};
-    state.dark=d.dark||false;
     state.onlineUsers=d.onlineUsers||{};
-
-    state.users.forEach((u,i)=>{
-      if(!state.colors[u]){
-        state.colors[u]=palette[i%palette.length];
-      }
-    });
 
     isLoaded=true;
 
-    applyDark();
     render();
-    renderUsers();
     renderMenuUsers();
   }
 });
@@ -280,38 +293,14 @@ function save(){
 /* MENU */
 function toggleMenu(){
   document.getElementById("sideMenu").classList.toggle("open");
+  document.getElementById("overlay").classList.toggle("open");
+}
+function closeMenu(){
+  document.getElementById("sideMenu").classList.remove("open");
+  document.getElementById("overlay").classList.remove("open");
 }
 
 /* USERS */
-function renderUsers(){
-  const u=document.getElementById("users");
-  u.innerHTML="";
-
-  state.users.forEach(x=>{
-    const wrap=document.createElement("div");
-    wrap.className="user";
-
-    const dot=document.createElement("div");
-    const isOnline=state.onlineUsers[x];
-
-    dot.className="dot";
-    dot.style.background=isOnline?state.colors[x]:"#ccc";
-
-    if(isOnline){
-      dot.style.boxShadow=`0 0 8px ${state.colors[x]}`;
-      dot.style.animation="pulse 1.5s infinite";
-    }
-
-    const name=document.createElement("span");
-    name.innerText=x;
-    name.style.color=state.colors[x];
-
-    wrap.appendChild(dot);
-    wrap.appendChild(name);
-    u.appendChild(wrap);
-  });
-}
-
 function renderMenuUsers(){
   const m=document.getElementById("menuUsers");
   m.innerHTML="";
@@ -328,50 +317,42 @@ function renderMenuUsers(){
         ${online?'●':'○'}
       </span>
     `;
-
     m.appendChild(div);
   });
 }
 
 /* USER */
+function changeUser(){
+  askUser();
+}
+
 function askUser(){
   openModal({
     title:"사용자 선택",
     type:"select",
     options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
-    onSubmit:setUser
+    onSubmit:(n)=>{
+      localStorage.setItem("user",n);
+      state.currentUser=n;
+
+      if(!state.users.includes(n)){
+        state.users.push(n);
+        state.colors[n]=palette[state.users.length%palette.length];
+      }
+
+      state.onlineUsers[n]=Date.now();
+      save();
+    }
   });
-}
-
-function changeUser(){
-  askUser();
-}
-
-function setUser(n){
-  localStorage.setItem("user",n);
-  state.currentUser=n;
-
-  if(!state.users.includes(n)){
-    state.users.push(n);
-    state.colors[n]=palette[state.users.length%palette.length];
-  }
-
-  state.onlineUsers[n]=Date.now();
-  save();
 }
 
 /* DARK */
 function toggleDark(){
-  state.dark=!state.dark;
-  applyDark();
-  save();
-}
-function applyDark(){
-  document.body.classList.toggle("dark",state.dark);
+  document.body.classList.toggle("dark");
 }
 
 /* MODAL */
-function openModal(c,def=""){
+function openModal(c){
   modalConfig=c;
   document.getElementById("modalTitle").innerText=c.title;
 
@@ -380,7 +361,7 @@ function openModal(c,def=""){
 
   if(c.type==="text"){
     const i=document.createElement("input");
-    i.id="mInput"; i.value=def;
+    i.id="mInput";
     box.appendChild(i);
   }
 
@@ -400,10 +381,7 @@ function openModal(c,def=""){
 }
 
 function submitModal(){
-  let v="";
-  if(modalConfig.type==="text") v=document.getElementById("mInput").value.trim();
-  if(modalConfig.type==="select") v=document.getElementById("mSelect").value;
-
+  let v=document.getElementById("mInput")?.value || document.getElementById("mSelect")?.value;
   if(!v) return;
 
   closeModal();
@@ -420,12 +398,10 @@ document.getElementById("fab").onclick=()=>{
     title:"주제",
     type:"text",
     onSubmit:async t=>{
-      const writer=state.currentUser;
-
       let theme={
         id:Date.now()+"",
         title:t,
-        owner:writer,
+        owner:state.currentUser,
         lines:[]
       };
 
@@ -446,56 +422,6 @@ document.getElementById("fab").onclick=()=>{
     }
   });
 };
-
-/* EDIT / DELETE */
-function editLine(tid,lid){
-  const t=state.themes.find(x=>x.id===tid);
-  const l=t.lines.find(x=>x.id===lid);
-
-  openModal({
-    title:"수정",
-    type:"text",
-    onSubmit:(txt)=>{
-      openModal({
-        title:"확인",
-        type:"select",
-        options:["확인","취소"],
-        onSubmit:(c)=>{
-          if(c==="확인"){l.text=txt;save();}
-        }
-      });
-    }
-  },l.text);
-}
-
-function deleteLine(tid,lid){
-  openModal({
-    title:"삭제?",
-    type:"select",
-    options:["삭제","취소"],
-    onSubmit:(r)=>{
-      if(r!=="삭제") return;
-
-      openModal({
-        title:"진짜 삭제?",
-        type:"select",
-        options:["확인","취소"],
-        onSubmit:(c)=>{
-          if(c!=="확인") return;
-
-          const t=state.themes.find(x=>x.id===tid);
-          t.lines=t.lines.filter(x=>x.id!==lid);
-
-          if(t.lines.length===0){
-            state.themes=state.themes.filter(x=>x.id!==tid);
-          }
-
-          save();
-        }
-      });
-    }
-  });
-}
 
 /* RENDER */
 function render(){
@@ -519,19 +445,6 @@ function render(){
       const d=document.createElement("div");
       d.className="line";
       d.innerText=`${l.letter}: ${l.text}`;
-
-      d.onclick=()=>{
-        openModal({
-          title:"메뉴",
-          type:"select",
-          options:["수정","삭제","취소"],
-          onSubmit:(c)=>{
-            if(c==="수정") editLine(t.id,l.id);
-            if(c==="삭제") deleteLine(t.id,l.id);
-          }
-        });
-      };
-
       c.appendChild(d);
     });
 
