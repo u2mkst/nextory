@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KST Nextory</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -13,15 +14,11 @@
 @font-face {
   font-family: 'Ria';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2') format('woff2');
-  font-weight: normal;
-  font-display: swap;
 }
 
 @font-face {
   font-family: 'Paperozi';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-display: swap;
 }
 
 /* ===== THEME ===== */
@@ -81,6 +78,7 @@ body{
   gap:16px;
   padding:20px;
   overflow-x:auto;
+  scroll-behavior:smooth;
 }
 
 .card{
@@ -89,6 +87,11 @@ body{
   padding:14px;
   border-radius:14px;
   box-shadow:0 6px 20px rgba(0,0,0,0.08);
+  transition:0.2s;
+}
+
+.card:active{
+  transform:scale(0.98);
 }
 
 .line{
@@ -109,6 +112,10 @@ body{
   border:none;
   background:transparent;
   cursor:pointer;
+}
+
+.btn:active{
+  opacity:0.6;
 }
 
 .moreBtn{
@@ -171,6 +178,53 @@ body{
   color:white;
 }
 
+/* ===== MOBILE ===== */
+@media (max-width: 768px){
+
+  .header{
+    padding:10px;
+  }
+
+  .title{
+    font-size:16px;
+  }
+
+  #story{
+    flex-direction:column;
+    padding:12px;
+    gap:12px;
+  }
+
+  .card{
+    width:100%;
+    min-width:unset;
+    padding:12px;
+  }
+
+  .line{
+    font-size:14px;
+    padding:10px;
+  }
+
+  #fab{
+    width:56px;
+    height:56px;
+    font-size:28px;
+    bottom:16px;
+    right:16px;
+  }
+
+  .modal-box{
+    width:90%;
+    margin:40% auto;
+  }
+
+  .modal-box input,
+  .modal-box select{
+    font-size:16px;
+  }
+}
+
 </style>
 </head>
 
@@ -223,18 +277,12 @@ let state = {
 const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
 
 let modalConfig={};
-
-/* delete menu */
-let openMenu = {
-  themeId:null,
-  lineId:null
-};
+let openMenu={themeId:null,lineId:null};
 
 /* ===== REALTIME ===== */
 docRef.onSnapshot(doc=>{
   if(doc.exists){
     state = doc.data();
-
     applyDark();
     render();
     renderUsers();
@@ -248,7 +296,6 @@ docRef.onSnapshot(doc=>{
 window.onload=()=>{
   const d=localStorage.getItem("dark");
   if(d!==null) state.dark=d==="true";
-
   applyDark();
 
   if(!localStorage.getItem("user")) askUser();
@@ -278,7 +325,6 @@ function setTyping(){
 
 function renderTyping(){
   const el=document.getElementById("typing");
-
   if(state.typing && Date.now()-state.typing.time<3000){
     el.innerText=`${state.typing.user} is typing...`;
   }else{
@@ -289,7 +335,6 @@ function renderTyping(){
 /* ===== MODAL ===== */
 function openModal(config,def=""){
   modalConfig=config;
-
   document.getElementById("modalTitle").innerText=config.title;
   const box=document.getElementById("modalContent");
   box.innerHTML="";
@@ -304,14 +349,12 @@ function openModal(config,def=""){
   if(config.type==="select"){
     const s=document.createElement("select");
     s.id="mSelect";
-
     config.options.forEach(o=>{
       const op=document.createElement("option");
       op.value=o;
       op.innerText=o;
       s.appendChild(op);
     });
-
     box.appendChild(s);
   }
 
@@ -320,15 +363,12 @@ function openModal(config,def=""){
 
 function submitModal(){
   let v="";
-
   if(modalConfig.type==="text")
     v=document.getElementById("mInput").value.trim();
-
   if(modalConfig.type==="select")
     v=document.getElementById("mSelect").value;
 
   if(!v) return;
-
   closeModal();
   modalConfig.onSubmit(v);
 }
@@ -351,7 +391,6 @@ function askUser(){
         state.users.push(n);
         state.colors[n]=palette[state.users.length%palette.length];
       }
-
       save();
     }
   });
@@ -363,7 +402,6 @@ document.getElementById("fab").onclick=()=>{
     title:"주제",
     type:"text",
     onSubmit:async t=>{
-
       setTyping();
 
       let theme={
@@ -374,7 +412,6 @@ document.getElementById("fab").onclick=()=>{
 
       for(let i=0;i<t.length;i++){
         const c=t[i];
-
         const text=await new Promise(res=>{
           openModal({
             title:c,
@@ -428,10 +465,8 @@ function deleteLine(themeId,lineId){
   const theme = state.themes.find(x=>x.id===themeId);
   if(!theme) return;
 
-  // 1. 라인 삭제
   theme.lines = theme.lines.filter(x=>x.id!==lineId);
 
-  // 2. ⭐ 핵심: 비었으면 theme 자체 삭제
   if(theme.lines.length === 0){
     state.themes = state.themes.filter(t=>t.id!==themeId);
   }
@@ -439,7 +474,7 @@ function deleteLine(themeId,lineId){
   save();
 }
 
-/* ===== MENU TOGGLE ===== */
+/* ===== MENU ===== */
 function toggleMenu(themeId,lineId){
   if(openMenu.themeId===themeId && openMenu.lineId===lineId){
     openMenu={themeId:null,lineId:null};
@@ -457,7 +492,6 @@ function render(){
   state.themes.forEach(t=>{
     const c=document.createElement("div");
     c.className="card";
-
     c.innerHTML=`<b>${t.title}</b>`;
 
     t.lines.forEach(l=>{
