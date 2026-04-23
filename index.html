@@ -9,8 +9,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
-
-/* ===== FONTS ===== */
 @font-face {
   font-family: 'Ria';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2') format('woff2');
@@ -20,7 +18,6 @@
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
 }
 
-/* ===== THEME ===== */
 :root{
   --bg:#f6f7fb;
   --card:#fff;
@@ -32,7 +29,6 @@ body.dark{
   --text:#eee;
 }
 
-/* ===== BASE ===== */
 body{
   margin:0;
   font-family:'Paperozi', sans-serif;
@@ -40,7 +36,6 @@ body{
   color:var(--text);
 }
 
-/* ===== HEADER ===== */
 .header{
   display:flex;
   justify-content:space-between;
@@ -50,37 +45,37 @@ body{
   position:sticky;
   top:0;
 }
+
 .title{
   font-family:'Ria';
   font-size:20px;
 }
 
-/* users */
 .user-list span{
   margin-right:8px;
   font-weight:bold;
 }
 
-/* typing */
 #typing{
   padding:6px 12px;
   font-size:12px;
   opacity:0.7;
 }
 
-/* ===== STORY ===== */
 #story{
   display:flex;
   gap:16px;
   padding:20px;
   overflow-x:auto;
 }
+
 .card{
   min-width:260px;
   background:var(--card);
   padding:14px;
   border-radius:14px;
 }
+
 .line{
   padding:6px;
   display:flex;
@@ -88,24 +83,25 @@ body{
   border-bottom:1px solid rgba(0,0,0,0.1);
   cursor:pointer;
 }
+
 .line:hover{
   background:rgba(79,124,255,0.1);
 }
 
-/* buttons */
 .btn{
   border:none;
   background:transparent;
   cursor:pointer;
 }
+
 .moreBtn{
   font-size:18px;
 }
+
 .delBtn{
   color:#ff4d4d;
 }
 
-/* FAB */
 #fab{
   position:fixed;
   bottom:24px;
@@ -119,7 +115,6 @@ body{
   border:none;
 }
 
-/* MODAL */
 .modal{
   position:fixed;
   top:0;left:0;
@@ -127,6 +122,7 @@ body{
   background:rgba(0,0,0,0.5);
   display:none;
 }
+
 .modal-box{
   background:var(--card);
   width:320px;
@@ -135,6 +131,7 @@ body{
   border-radius:16px;
   text-align:center;
 }
+
 .modal-box input,
 .modal-box select{
   width:100%;
@@ -142,7 +139,6 @@ body{
   margin-top:10px;
 }
 
-/* ===== MOBILE ===== */
 @media (max-width:768px){
   #story{
     flex-direction:column;
@@ -157,7 +153,6 @@ body{
     font-size:28px;
   }
 }
-
 </style>
 </head>
 
@@ -215,7 +210,6 @@ docRef.onSnapshot(doc=>{
   if(doc.exists){
     const data = doc.data();
 
-    // ⭐ 핵심: currentUser 유지
     state.themes = data.themes || [];
     state.users = data.users || [];
     state.colors = data.colors || {};
@@ -241,6 +235,77 @@ window.onload=()=>{
   if(!localStorage.getItem("user")) askUser();
   else state.currentUser=localStorage.getItem("user");
 };
+
+/* ===== DARK ===== */
+function toggleDark(){
+  state.dark=!state.dark;
+  localStorage.setItem("dark",state.dark);
+  applyDark();
+  save();
+}
+function applyDark(){
+  document.body.classList.toggle("dark",state.dark);
+}
+
+/* ===== TYPING ===== */
+function setTyping(){
+  state.typing={
+    user:state.currentUser,
+    time:Date.now()
+  };
+  save();
+}
+function renderTyping(){
+  const el=document.getElementById("typing");
+  if(state.typing && Date.now()-state.typing.time<3000){
+    el.innerText=`${state.typing.user} is typing...`;
+  }else{
+    el.innerText="";
+  }
+}
+
+/* ===== MODAL ===== */
+function openModal(config,def=""){
+  modalConfig=config;
+  document.getElementById("modalTitle").innerText=config.title;
+  const box=document.getElementById("modalContent");
+  box.innerHTML="";
+
+  if(config.type==="text"){
+    const i=document.createElement("input");
+    i.id="mInput";
+    i.value=def;
+    box.appendChild(i);
+  }
+
+  if(config.type==="select"){
+    const s=document.createElement("select");
+    s.id="mSelect";
+    config.options.forEach(o=>{
+      const op=document.createElement("option");
+      op.value=o;
+      op.innerText=o;
+      s.appendChild(op);
+    });
+    box.appendChild(s);
+  }
+
+  document.getElementById("modal").style.display="block";
+}
+
+function submitModal(){
+  let v="";
+  if(modalConfig.type==="text") v=document.getElementById("mInput").value.trim();
+  if(modalConfig.type==="select") v=document.getElementById("mSelect").value;
+
+  if(!v) return;
+  closeModal();
+  modalConfig.onSubmit(v);
+}
+
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+}
 
 /* ===== USER ===== */
 function askUser(){
@@ -270,8 +335,7 @@ document.getElementById("fab").onclick=()=>{
     onSubmit:async t=>{
 
       setTyping();
-
-      const writer = state.currentUser; // ⭐ 핵심
+      const writer = state.currentUser;
 
       let theme={
         id:Math.random().toString(36).substr(2,9),
@@ -366,7 +430,7 @@ function render(){
         del.onclick=(e)=>{
           e.stopPropagation();
           deleteLine(t.id,l.id);
-          openMenu={themeId:null,lineId:null}; // ⭐ 오타 수정
+          openMenu={themeId:null,lineId:null};
           render();
         };
 
@@ -377,6 +441,19 @@ function render(){
     });
 
     s.appendChild(c);
+  });
+}
+
+/* ===== USERS ===== */
+function renderUsers(){
+  const u=document.getElementById("users");
+  u.innerHTML="";
+
+  state.users.forEach(x=>{
+    const s=document.createElement("span");
+    s.innerText=x;
+    s.style.color=state.colors[x];
+    u.appendChild(s);
   });
 }
 
