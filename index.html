@@ -51,17 +51,51 @@ body{
   font-size:20px;
 }
 
-.user-list span{
-  margin-right:8px;
-  font-weight:bold;
+/* ===== USERS ===== */
+.user-list{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
 }
 
+.user{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-right:10px;
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  transition:0.3s;
+}
+
+.online{
+  background:#4cd964;
+  box-shadow:0 0 6px #4cd964;
+  animation:pulse 1.5s infinite;
+}
+
+.offline{
+  background:#bbb;
+}
+
+@keyframes pulse{
+  0%{transform:scale(1);opacity:1;}
+  50%{transform:scale(1.4);opacity:0.6;}
+  100%{transform:scale(1);opacity:1;}
+}
+
+/* ===== TYPING ===== */
 #typing{
   padding:6px 12px;
   font-size:12px;
   opacity:0.7;
 }
 
+/* ===== STORY ===== */
 #story{
   display:flex;
   gap:16px;
@@ -102,6 +136,7 @@ body{
   color:#ff4d4d;
 }
 
+/* FAB */
 #fab{
   position:fixed;
   bottom:24px;
@@ -115,6 +150,7 @@ body{
   border:none;
 }
 
+/* MODAL */
 .modal{
   position:fixed;
   top:0;left:0;
@@ -198,7 +234,8 @@ let state = {
   colors:{},
   dark:false,
   currentUser:"",
-  typing:{user:"",time:0}
+  typing:{user:"",time:0},
+  onlineUsers:{}
 };
 
 const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
@@ -215,6 +252,7 @@ docRef.onSnapshot(doc=>{
     state.colors = data.colors || {};
     state.dark = data.dark || false;
     state.typing = data.typing || {};
+    state.onlineUsers = data.onlineUsers || {};
 
     applyDark();
     render();
@@ -234,7 +272,26 @@ window.onload=()=>{
 
   if(!localStorage.getItem("user")) askUser();
   else state.currentUser=localStorage.getItem("user");
+
+  setOnline(true);
 };
+
+window.addEventListener("beforeunload",()=>{
+  setOnline(false);
+});
+
+/* ===== ONLINE ===== */
+function setOnline(isOnline){
+  if(!state.currentUser) return;
+
+  if(isOnline){
+    state.onlineUsers[state.currentUser]=Date.now();
+  }else{
+    delete state.onlineUsers[state.currentUser];
+  }
+
+  save();
+}
 
 /* ===== DARK ===== */
 function toggleDark(){
@@ -333,7 +390,6 @@ document.getElementById("fab").onclick=()=>{
     title:"주제",
     type:"text",
     onSubmit:async t=>{
-
       setTyping();
       const writer = state.currentUser;
 
@@ -368,16 +424,59 @@ document.getElementById("fab").onclick=()=>{
   });
 };
 
+/* ===== EDIT ===== */
+function editLine(themeId,lineId){
+  const t=state.themes.find(x=>x.id===themeId);
+  const l=t.lines.find(x=>x.id===lineId);
+
+  openModal({
+    title:"내용 수정",
+    type:"text",
+    onSubmit:(newText)=>{
+      openModal({
+        title:"정말 수정할까요?",
+        type:"select",
+        options:["확인","취소"],
+        onSubmit:(c)=>{
+          if(c!=="확인") return;
+          l.text=newText;
+          save();
+        }
+      });
+    }
+  },l.text);
+}
+
 /* ===== DELETE ===== */
 function deleteLine(themeId,lineId){
-  const theme = state.themes.find(x=>x.id===themeId);
-  theme.lines = theme.lines.filter(x=>x.id!==lineId);
+  openModal({
+    title:"삭제하시겠습니까?",
+    type:"select",
+    options:["삭제","취소"],
+    onSubmit:(f)=>{
+      if(f!=="삭제") return;
 
-  if(theme.lines.length===0){
-    state.themes = state.themes.filter(t=>t.id!==themeId);
-  }
+      openModal({
+        title:"진짜 삭제합니다?",
+        type:"select",
+        options:["확인","취소"],
+        onSubmit:(s)=>{
+          if(s!=="확인") return;
 
-  save();
+          const theme = state.themes.find(x=>x.id===themeId);
+          if(!theme) return;
+
+          theme.lines = theme.lines.filter(x=>x.id!==lineId);
+
+          if(theme.lines.length===0){
+            state.themes = state.themes.filter(t=>t.id!==themeId);
+          }
+
+          save();
+        }
+      });
+    }
+  });
 }
 
 /* ===== MENU ===== */
@@ -423,17 +522,24 @@ function render(){
       d.appendChild(menuBtn);
 
       if(openMenu.themeId===t.id && openMenu.lineId===l.id){
+
+        const edit=document.createElement("button");
+        edit.className="btn";
+        edit.innerText="수정";
+        edit.onclick=(e)=>{
+          e.stopPropagation();
+          editLine(t.id,l.id);
+        };
+
         const del=document.createElement("button");
         del.className="btn delBtn";
         del.innerText="삭제";
-
         del.onclick=(e)=>{
           e.stopPropagation();
           deleteLine(t.id,l.id);
-          openMenu={themeId:null,lineId:null};
-          render();
         };
 
+        d.appendChild(edit);
         d.appendChild(del);
       }
 
@@ -444,16 +550,26 @@ function render(){
   });
 }
 
-/* ===== USERS ===== */
+/* ===== USERS (애니메이션 포함) ===== */
 function renderUsers(){
   const u=document.getElementById("users");
   u.innerHTML="";
 
   state.users.forEach(x=>{
-    const s=document.createElement("span");
-    s.innerText=x;
-    s.style.color=state.colors[x];
-    u.appendChild(s);
+    const wrap=document.createElement("div");
+    wrap.className="user";
+
+    const dot=document.createElement("div");
+    const isOnline = state.onlineUsers && state.onlineUsers[x];
+    dot.className = "dot " + (isOnline ? "online" : "offline");
+
+    const name=document.createElement("span");
+    name.innerText=x;
+    name.style.color=state.colors[x] || "#999";
+
+    wrap.appendChild(dot);
+    wrap.appendChild(name);
+    u.appendChild(wrap);
   });
 }
 
