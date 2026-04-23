@@ -44,19 +44,15 @@ body{
   padding:12px;
   background:var(--card);
 }
-
 .left{
   display:flex;
   align-items:center;
   gap:10px;
 }
-
 .title{
   font-family:'Ria';
   font-size:20px;
 }
-
-/* MENU */
 .menuBtn{
   font-size:22px;
   background:none;
@@ -67,18 +63,16 @@ body{
 /* STORY */
 #story{
   display:flex;
+  flex-direction:column;
   gap:16px;
   padding:20px;
-  overflow-x:auto;
+  overflow-y:auto;
 }
-
 .card{
-  min-width:260px;
   background:var(--card);
   padding:14px;
   border-radius:14px;
 }
-
 .line{
   padding:6px;
   cursor:pointer;
@@ -100,13 +94,31 @@ body{
   border:none;
 }
 
+/* SCROLL BTN */
+#scrollBtn{
+  position:fixed;
+  bottom:90px;
+  right:20px;
+  width:52px;height:52px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,0.6);
+  backdrop-filter:blur(10px);
+  opacity:0;
+  transform:translateY(20px);
+  transition:0.25s;
+}
+#scrollBtn.show{
+  opacity:1;
+  transform:translateY(0);
+}
+
 /* MODAL */
 .modal{
   position:fixed;
-  top:0;left:0;
   width:100%;height:100%;
-  display:none;
   background:rgba(0,0,0,0.5);
+  display:none;
 }
 .modal-box{
   background:var(--card);
@@ -116,7 +128,7 @@ body{
   border-radius:12px;
 }
 
-/* SIDE MENU */
+/* MENU */
 #overlay{
   position:fixed;
   width:100%;height:100%;
@@ -140,25 +152,6 @@ body{
   display:flex;
   justify-content:space-between;
 }
-
-/* LINK */
-.menuLink{
-  display:block;
-  padding:10px;
-  background:#eee;
-  border-radius:10px;
-  text-decoration:none;
-  color:black;
-}
-
-.closeBtn{
-  width:100%;
-  padding:10px;
-  background:red;
-  color:white;
-  border:none;
-  border-radius:10px;
-}
 </style>
 </head>
 
@@ -181,19 +174,11 @@ body{
   <button onclick="toggleDark()">🌙 다크모드</button>
   <br><br>
   <button onclick="changeUser()">👤 계정 변경</button>
-
-  <hr>
-
-  <a href="https://u2mkst.github.io/ksthub/" target="_blank" class="menuLink">
-    급식 / 시간표
-  </a>
-
-  <br><br>
-  <button class="closeBtn" onclick="closeMenu()">닫기</button>
 </div>
 
 <div id="story"></div>
 <button id="fab">＋</button>
+<button id="scrollBtn">⬇</button>
 
 <div class="modal" id="modal">
   <div class="modal-box">
@@ -220,14 +205,27 @@ const docRef = db.collection("stories").doc("main");
 /* STATE */
 let state={themes:[],users:[],colors:{},currentUser:"",onlineUsers:{}};
 let modalConfig={};
+let selectedUser=null;
 let isLoaded=false;
 
-const palette=["#ff6b6b","#6bcB77","#4d96ff"];
+/* 🎨 색상 팔레트 */
+const palette=[
+"#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff",
+"#ff9f1c","#2ec4b6","#e71d36","#ff66c4","#00bbf9"
+];
 
 /* REALTIME */
 docRef.onSnapshot(doc=>{
   if(doc.exists){
     state=doc.data();
+
+    // 색 자동 생성
+    state.users.forEach((u,i)=>{
+      if(!state.colors[u]){
+        state.colors[u]=palette[i%palette.length];
+      }
+    });
+
     isLoaded=true;
     render();
     renderMenuUsers();
@@ -240,29 +238,46 @@ function save(){
   docRef.set(state);
 }
 
+/* USER */
+function changeUser(){
+  openModal({
+    title:"사용자",
+    type:"select",
+    options:["한이","바가","라면","지후"],
+    onSubmit:(n)=>{
+      state.currentUser=n;
+
+      if(!state.users.includes(n)){
+        state.users.push(n);
+        state.colors[n]=palette[state.users.length%palette.length];
+      }
+
+      save();
+    }
+  });
+}
+
 /* MENU */
 function toggleMenu(){
-  document.getElementById("sideMenu").classList.toggle("open");
-  document.getElementById("overlay").classList.toggle("open");
+  sideMenu.classList.toggle("open");
+  overlay.classList.toggle("open");
 }
 function closeMenu(){
-  document.getElementById("sideMenu").classList.remove("open");
-  document.getElementById("overlay").classList.remove("open");
+  sideMenu.classList.remove("open");
+  overlay.classList.remove("open");
 }
 
 /* MODAL */
 function openModal(c,def=""){
   modalConfig=c;
-  document.getElementById("modalTitle").innerText=c.title;
-
-  const box=document.getElementById("modalContent");
-  box.innerHTML="";
+  modalTitle.innerText=c.title;
+  modalContent.innerHTML="";
 
   if(c.type==="text"){
     const i=document.createElement("input");
-    i.id="mInput";
     i.value=def;
-    box.appendChild(i);
+    i.id="mInput";
+    modalContent.appendChild(i);
   }
 
   if(c.type==="select"){
@@ -274,25 +289,25 @@ function openModal(c,def=""){
       op.innerText=o;
       s.appendChild(op);
     });
-    box.appendChild(s);
+    modalContent.appendChild(s);
   }
 
-  document.getElementById("modal").style.display="block";
+  modal.style.display="block";
 }
 
 function submitModal(){
   let v=document.getElementById("mInput")?.value || document.getElementById("mSelect")?.value;
   if(!v) return;
-  closeModal();
+  modal.style.display="none";
   modalConfig.onSubmit(v);
 }
 
 function closeModal(){
-  document.getElementById("modal").style.display="none";
+  modal.style.display="none";
 }
 
 /* CREATE */
-document.getElementById("fab").onclick=()=>{
+fab.onclick=()=>{
   openModal({
     title:"주제",
     type:"text",
@@ -303,7 +318,6 @@ document.getElementById("fab").onclick=()=>{
         const txt=await new Promise(res=>{
           openModal({title:c,type:"text",onSubmit:res});
         });
-
         theme.lines.push({id:Math.random()+"",letter:c,text:txt});
       }
 
@@ -330,7 +344,7 @@ function editLine(tid,lid){
 
 /* DELETE */
 function deleteLine(tid,lid){
-  if(!confirm("삭제?")) return;
+  if(!confirm("삭제할까요?")) return;
 
   const t=state.themes.find(x=>x.id===tid);
   t.lines=t.lines.filter(x=>x.id!==lid);
@@ -342,16 +356,34 @@ function deleteLine(tid,lid){
   save();
 }
 
+/* FILTER */
+function filterByUser(u){
+  selectedUser = selectedUser===u ? null : u;
+  render();
+}
+
 /* RENDER */
 function render(){
   const s=document.getElementById("story");
   s.innerHTML="";
 
-  state.themes.forEach(t=>{
+  const list = selectedUser
+    ? state.themes.filter(t=>t.owner===selectedUser)
+    : state.themes;
+
+  list.forEach(t=>{
     const c=document.createElement("div");
     c.className="card";
 
-    c.innerHTML=`<b>${t.title}</b>`;
+    c.innerHTML=`
+      <div style="display:flex;justify-content:space-between;">
+        <b>${t.title}</b>
+        <span onclick="filterByUser('${t.owner}')" 
+          style="color:${state.colors[t.owner]};cursor:pointer;font-size:12px;">
+          ${t.owner}
+        </span>
+      </div>
+    `;
 
     t.lines.forEach(l=>{
       const d=document.createElement("div");
@@ -359,7 +391,7 @@ function render(){
       d.innerText=`${l.letter}: ${l.text}`;
 
       d.onclick=()=>{
-        const action=prompt("수정 / 삭제 입력");
+        const action=prompt("수정 / 삭제");
         if(action==="수정") editLine(t.id,l.id);
         if(action==="삭제") deleteLine(t.id,l.id);
       };
@@ -371,38 +403,39 @@ function render(){
   });
 }
 
-/* USERS */
-function renderMenuUsers(){
-  const m=document.getElementById("menuUsers");
-  m.innerHTML="";
-  state.users.forEach(x=>{
-    const div=document.createElement("div");
-    div.className="menuUser";
-    div.innerHTML=`<span>${x}</span>`;
-    m.appendChild(div);
-  });
-}
+/* SCROLL BTN */
+const scrollBtn=document.getElementById("scrollBtn");
+let timer;
 
-/* USER */
-function changeUser(){
-  askUser();
-}
+window.addEventListener("scroll",()=>{
+  const max=document.body.scrollHeight-window.innerHeight;
 
-function askUser(){
-  openModal({
-    title:"사용자",
-    type:"select",
-    options:["한이","바가","라면","지후"],
-    onSubmit:(n)=>{
-      state.currentUser=n;
-      if(!state.users.includes(n)) state.users.push(n);
-      save();
-    }
-  });
-}
+  if(window.scrollY < max/2){
+    scrollBtn.innerText="⬇";
+    scrollBtn.onclick=()=>window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+  }else{
+    scrollBtn.innerText="⬆";
+    scrollBtn.onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+  }
+
+  scrollBtn.classList.add("show");
+  clearTimeout(timer);
+  timer=setTimeout(()=>scrollBtn.classList.remove("show"),1000);
+});
 
 function toggleDark(){
   document.body.classList.toggle("dark");
+}
+
+/* USERS MENU */
+function renderMenuUsers(){
+  menuUsers.innerHTML="";
+  state.users.forEach(u=>{
+    const div=document.createElement("div");
+    div.className="menuUser";
+    div.innerHTML=`<span style="color:${state.colors[u]}">${u}</span>`;
+    menuUsers.appendChild(div);
+  });
 }
 
 </script>
