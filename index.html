@@ -31,47 +31,44 @@ body.dark{
 
 body{
   margin:0;
-  font-family:'Paperozi', sans-serif;
+  font-family:'Paperozi';
   background:var(--bg);
   color:var(--text);
 }
 
+/* HEADER */
 .header{
   display:flex;
   justify-content:space-between;
-  align-items:center;
   padding:12px;
   background:var(--card);
 }
 
-.title{
-  font-family:'Ria';
-  font-size:20px;
+.title{font-family:'Ria';}
+
+.menuBtn{
+  font-size:22px;
+  background:none;
+  border:none;
 }
 
+/* DESKTOP USER */
 .user-list{
   display:flex;
-  gap:12px;
+  gap:10px;
 }
 
 .user{
   display:flex;
   align-items:center;
-  gap:6px;
+  gap:5px;
 }
 
 .dot{
-  width:10px;
-  height:10px;
-  border-radius:50%;
+  width:8px;height:8px;border-radius:50%;
 }
 
-@keyframes pulse{
-  0%{transform:scale(1);}
-  50%{transform:scale(1.4);}
-  100%{transform:scale(1);}
-}
-
+/* STORY */
 #story{
   display:flex;
   gap:16px;
@@ -86,23 +83,12 @@ body{
   border-radius:14px;
 }
 
-.line{
-  padding:6px;
-  display:flex;
-  justify-content:space-between;
-  cursor:pointer;
-}
-
-.line:hover{
-  background:rgba(79,124,255,0.1);
-}
-
+/* FAB */
 #fab{
   position:fixed;
   bottom:20px;
   right:20px;
-  width:60px;
-  height:60px;
+  width:60px;height:60px;
   border-radius:50%;
   font-size:30px;
   background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
@@ -110,6 +96,7 @@ body{
   border:none;
 }
 
+/* MODAL */
 .modal{
   position:fixed;
   top:0;left:0;
@@ -126,27 +113,70 @@ body{
   border-radius:12px;
 }
 
-.modal-box input,
-.modal-box select{
-  width:100%;
-  padding:10px;
-  margin-top:10px;
+/* 📱 MOBILE */
+@media (max-width:768px){
+  #story{
+    flex-direction:column; /* ⭐ 핵심 */
+    overflow-x:hidden;
+  }
+
+  .user-list{
+    display:none; /* 숨김 */
+  }
 }
+
+/* 📱 SIDE MENU */
+#sideMenu{
+  position:fixed;
+  top:0;left:-260px;
+  width:260px;
+  height:100%;
+  background:var(--card);
+  padding:20px;
+  transition:0.3s;
+  z-index:20;
+}
+
+#sideMenu.open{
+  left:0;
+}
+
+.menuUser{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+}
+
+.online{color:#4cd964;}
+.offline{color:#aaa;}
+
 </style>
 </head>
 
 <body>
 
 <div class="header">
+  <button class="menuBtn" onclick="toggleMenu()">☰</button>
   <div class="title">KST Nextory</div>
   <div class="user-list" id="users"></div>
-  <button onclick="changeUser()">👤</button>
-  <button onclick="toggleDark()">🌙</button>
+</div>
+
+<!-- 📱 SIDE MENU -->
+<div id="sideMenu">
+  <h3>사용자</h3>
+  <div id="menuUsers"></div>
+
+  <hr>
+
+  <button onclick="toggleDark()">🌙 다크모드</button>
+  <br><br>
+  <button onclick="changeUser()">👤 계정 변경</button>
 </div>
 
 <div id="story"></div>
 <button id="fab">＋</button>
 
+<!-- MODAL -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
@@ -170,18 +200,16 @@ const db = firebase.firestore();
 const docRef = db.collection("stories").doc("main");
 
 /* STATE */
-let state = {
+let state={
   themes:[],
   users:[],
   colors:{},
-  dark:false,
   currentUser:"",
   onlineUsers:{}
 };
 
 let isLoaded=false;
 const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
-
 let modalConfig={};
 
 /* REALTIME */
@@ -192,110 +220,102 @@ docRef.onSnapshot(doc=>{
     state.themes=d.themes||[];
     state.users=d.users||[];
     state.colors=d.colors||{};
-    state.dark=d.dark||false;
     state.onlineUsers=d.onlineUsers||{};
-
-    state.users.forEach((u,i)=>{
-      if(!state.colors[u]){
-        state.colors[u]=palette[i%palette.length];
-      }
-    });
 
     isLoaded=true;
 
-    applyDark();
     render();
     renderUsers();
-  } else {
-    docRef.set(state);
+    renderMenuUsers();
   }
 });
 
 /* SAVE */
 function save(){
   if(!isLoaded) return;
-
   docRef.update(state).catch(()=>docRef.set(state));
 }
 
-/* INIT */
-window.onload=()=>{
-  const u=localStorage.getItem("user");
+/* MENU */
+function toggleMenu(){
+  document.getElementById("sideMenu").classList.toggle("open");
+}
 
-  if(!u) askUser();
-  else{
-    state.currentUser=u;
-    setOnline(true);
-  }
-};
+/* USER LIST */
+function renderUsers(){
+  const u=document.getElementById("users");
+  u.innerHTML="";
+}
 
-window.addEventListener("beforeunload",()=>setOnline(false));
+function renderMenuUsers(){
+  const m=document.getElementById("menuUsers");
+  m.innerHTML="";
+
+  state.users.forEach(x=>{
+    const div=document.createElement("div");
+    div.className="menuUser";
+
+    const online=state.onlineUsers[x];
+
+    div.innerHTML=`
+      <span style="color:${state.colors[x]}">${x}</span>
+      <span class="${online?'online':'offline'}">
+        ${online?'●':'○'}
+      </span>
+    `;
+
+    m.appendChild(div);
+  });
+}
+
+/* DARK */
+function toggleDark(){
+  document.body.classList.toggle("dark");
+}
 
 /* USER */
+function changeUser(){
+  askUser();
+}
+
 function askUser(){
   openModal({
     title:"사용자 선택",
     type:"select",
     options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
-    onSubmit:setUser
+    onSubmit:(n)=>{
+      localStorage.setItem("user",n);
+      state.currentUser=n;
+
+      if(!state.users.includes(n)){
+        state.users.push(n);
+        state.colors[n]=palette[state.users.length%palette.length];
+      }
+
+      state.onlineUsers[n]=Date.now();
+      save();
+    }
   });
 }
 
-function changeUser(){
-  askUser();
-}
-
-function setUser(n){
-  localStorage.setItem("user",n);
-  state.currentUser=n;
-
-  if(!state.users.includes(n)){
-    state.users.push(n);
-    state.colors[n]=palette[state.users.length%palette.length];
-  }
-
-  setOnline(true);
-  save();
-}
-
-/* ONLINE */
-function setOnline(on){
-  if(!state.currentUser) return;
-
-  if(on) state.onlineUsers[state.currentUser]=Date.now();
-  else delete state.onlineUsers[state.currentUser];
-
-  save();
-}
-
-/* DARK */
-function toggleDark(){
-  state.dark=!state.dark;
-  applyDark();
-  save();
-}
-function applyDark(){
-  document.body.classList.toggle("dark",state.dark);
-}
-
 /* MODAL */
-function openModal(config,def=""){
-  modalConfig=config;
-  document.getElementById("modalTitle").innerText=config.title;
+function openModal(c){
+  modalConfig=c;
+  document.getElementById("modalTitle").innerText=c.title;
 
   const box=document.getElementById("modalContent");
   box.innerHTML="";
 
-  if(config.type==="text"){
+  if(c.type==="text"){
     const i=document.createElement("input");
-    i.id="mInput"; i.value=def;
+    i.id="mInput";
     box.appendChild(i);
   }
 
-  if(config.type==="select"){
+  if(c.type==="select"){
     const s=document.createElement("select");
     s.id="mSelect";
-    config.options.forEach(o=>{
+    c.options.forEach(o=>{
       const op=document.createElement("option");
       op.value=o;
       op.innerText=o;
@@ -308,9 +328,7 @@ function openModal(config,def=""){
 }
 
 function submitModal(){
-  let v="";
-  if(modalConfig.type==="text") v=document.getElementById("mInput").value.trim();
-  if(modalConfig.type==="select") v=document.getElementById("mSelect").value;
+  let v=document.getElementById("mInput")?.value || document.getElementById("mSelect")?.value;
   if(!v) return;
 
   closeModal();
@@ -327,12 +345,10 @@ document.getElementById("fab").onclick=()=>{
     title:"주제",
     type:"text",
     onSubmit:async t=>{
-      const writer=state.currentUser;
-
       let theme={
         id:Date.now()+"",
         title:t,
-        owner:writer,
+        owner:state.currentUser,
         lines:[]
       };
 
@@ -354,60 +370,6 @@ document.getElementById("fab").onclick=()=>{
   });
 };
 
-/* EDIT */
-function editLine(tid,lid){
-  const t=state.themes.find(x=>x.id===tid);
-  const l=t.lines.find(x=>x.id===lid);
-
-  openModal({
-    title:"수정",
-    type:"text",
-    onSubmit:(txt)=>{
-      openModal({
-        title:"확인",
-        type:"select",
-        options:["확인","취소"],
-        onSubmit:(c)=>{
-          if(c==="확인"){
-            l.text=txt;
-            save();
-          }
-        }
-      });
-    }
-  },l.text);
-}
-
-/* DELETE */
-function deleteLine(tid,lid){
-  openModal({
-    title:"삭제?",
-    type:"select",
-    options:["삭제","취소"],
-    onSubmit:(r)=>{
-      if(r!=="삭제") return;
-
-      openModal({
-        title:"진짜 삭제?",
-        type:"select",
-        options:["확인","취소"],
-        onSubmit:(c)=>{
-          if(c!=="확인") return;
-
-          const t=state.themes.find(x=>x.id===tid);
-          t.lines=t.lines.filter(x=>x.id!==lid);
-
-          if(t.lines.length===0){
-            state.themes=state.themes.filter(x=>x.id!==tid);
-          }
-
-          save();
-        }
-      });
-    }
-  });
-}
-
 /* RENDER */
 function render(){
   const s=document.getElementById("story");
@@ -428,56 +390,11 @@ function render(){
 
     t.lines.forEach(l=>{
       const d=document.createElement("div");
-      d.className="line";
-
-      d.innerHTML=`<span>${l.letter}: ${l.text}</span>`;
-
-      d.onclick=()=>{
-        openModal({
-          title:"메뉴",
-          type:"select",
-          options:["수정","삭제","취소"],
-          onSubmit:(c)=>{
-            if(c==="수정") editLine(t.id,l.id);
-            if(c==="삭제") deleteLine(t.id,l.id);
-          }
-        });
-      };
-
+      d.innerHTML=`${l.letter}: ${l.text}`;
       c.appendChild(d);
     });
 
     s.appendChild(c);
-  });
-}
-
-/* USERS */
-function renderUsers(){
-  const u=document.getElementById("users");
-  u.innerHTML="";
-
-  state.users.forEach(x=>{
-    const wrap=document.createElement("div");
-    wrap.className="user";
-
-    const dot=document.createElement("div");
-    const isOnline=state.onlineUsers[x];
-
-    dot.className="dot";
-    dot.style.background=isOnline?state.colors[x]:"#ccc";
-
-    if(isOnline){
-      dot.style.boxShadow=`0 0 8px ${state.colors[x]}`;
-      dot.style.animation="pulse 1.5s infinite";
-    }
-
-    const name=document.createElement("span");
-    name.innerText=x;
-    name.style.color=state.colors[x];
-
-    wrap.appendChild(dot);
-    wrap.appendChild(name);
-    u.appendChild(wrap);
   });
 }
 
