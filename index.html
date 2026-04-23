@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>KST Nextory</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+
+/* ===== FONTS ===== */
+@font-face {
+  font-family: 'Ria';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2') format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Paperozi';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+/* ===== THEME ===== */
+:root{
+  --bg:#f6f7fb;
+  --card:#fff;
+  --text:#222;
+}
+
+body.dark{
+  --bg:#12141a;
+  --card:#1e2230;
+  --text:#eee;
+}
+
+/* ===== BASE ===== */
+body{
+  margin:0;
+  font-family:'Paperozi', sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* ===== HEADER ===== */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px;
+  background:var(--card);
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+
+.title{
+  font-family:'Ria', sans-serif;
+  font-size:20px;
+}
+
+/* users */
+.user-list span{
+  margin-right:8px;
+  font-weight:bold;
+}
+
+/* typing */
+#typing{
+  padding:6px 12px;
+  font-size:12px;
+  opacity:0.7;
+}
+
+/* ===== STORY ===== */
+#story{
+  display:flex;
+  gap:16px;
+  padding:20px;
+  overflow-x:auto;
+}
+
+.card{
+  min-width:260px;
+  background:var(--card);
+  padding:14px;
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.08);
+}
+
+.line{
+  padding:6px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid rgba(0,0,0,0.1);
+  cursor:pointer;
+}
+
+.line:hover{
+  background:rgba(79,124,255,0.1);
+}
+
+/* buttons */
+.btn{
+  border:none;
+  background:transparent;
+  cursor:pointer;
+}
+
+.moreBtn{
+  font-size:18px;
+}
+
+.delBtn{
+  color:#ff4d4d;
+}
+
+/* FAB */
+#fab{
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  border:none;
+  font-size:32px;
+  color:white;
+  background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
+  cursor:pointer;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+}
+
+.modal-box{
+  background:var(--card);
+  width:320px;
+  margin:15% auto;
+  padding:20px;
+  border-radius:16px;
+  text-align:center;
+}
+
+.modal-box input,
+.modal-box select{
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+}
+
+.modal-box button{
+  margin-top:15px;
+  width:48%;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
+  color:white;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div class="title">KST Nextory</div>
+  <div class="user-list" id="users"></div>
+  <button onclick="toggleDark()">🌙</button>
+</div>
+
+<div id="typing"></div>
+<div id="story"></div>
+
+<button id="fab">＋</button>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+    <div id="modalContent"></div>
+    <button onclick="submitModal()">확인</button>
+    <button onclick="closeModal()">취소</button>
+  </div>
+</div>
+
+<script>
+
+/* ===== FIREBASE ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCX3ucF2Q-ZKLL4degzN4wEOx_T_Djc2UI",
+  authDomain: "kstnextory.firebaseapp.com",
+  projectId: "kstnextory"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const docRef = db.collection("stories").doc("main");
+
+/* ===== STATE ===== */
+let state = {
+  themes:[],
+  users:[],
+  colors:{},
+  dark:false,
+  currentUser:"",
+  typing:{user:"",time:0}
+};
+
+const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
+
+let modalConfig={};
+
+/* delete menu */
+let openMenu = {
+  themeId:null,
+  lineId:null
+};
+
+/* ===== REALTIME ===== */
+docRef.onSnapshot(doc=>{
+  if(doc.exists){
+    state = doc.data();
+
+    applyDark();
+    render();
+    renderUsers();
+    renderTyping();
+  } else {
+    docRef.set(state);
+  }
+});
+
+/* ===== INIT ===== */
+window.onload=()=>{
+  const d=localStorage.getItem("dark");
+  if(d!==null) state.dark=d==="true";
+
+  applyDark();
+
+  if(!localStorage.getItem("user")) askUser();
+  else state.currentUser=localStorage.getItem("user");
+};
+
+/* ===== DARK ===== */
+function toggleDark(){
+  state.dark=!state.dark;
+  localStorage.setItem("dark",state.dark);
+  applyDark();
+  save();
+}
+
+function applyDark(){
+  document.body.classList.toggle("dark",state.dark);
+}
+
+/* ===== TYPING ===== */
+function setTyping(){
+  state.typing={
+    user:state.currentUser,
+    time:Date.now()
+  };
+  save();
+}
+
+function renderTyping(){
+  const el=document.getElementById("typing");
+
+  if(state.typing && Date.now()-state.typing.time<3000){
+    el.innerText=`${state.typing.user} is typing...`;
+  }else{
+    el.innerText="";
+  }
+}
+
+/* ===== MODAL ===== */
+function openModal(config,def=""){
+  modalConfig=config;
+
+  document.getElementById("modalTitle").innerText=config.title;
+  const box=document.getElementById("modalContent");
+  box.innerHTML="";
+
+  if(config.type==="text"){
+    const i=document.createElement("input");
+    i.id="mInput";
+    i.value=def;
+    box.appendChild(i);
+  }
+
+  if(config.type==="select"){
+    const s=document.createElement("select");
+    s.id="mSelect";
+
+    config.options.forEach(o=>{
+      const op=document.createElement("option");
+      op.value=o;
+      op.innerText=o;
+      s.appendChild(op);
+    });
+
+    box.appendChild(s);
+  }
+
+  document.getElementById("modal").style.display="block";
+}
+
+function submitModal(){
+  let v="";
+
+  if(modalConfig.type==="text")
+    v=document.getElementById("mInput").value.trim();
+
+  if(modalConfig.type==="select")
+    v=document.getElementById("mSelect").value;
+
+  if(!v) return;
+
+  closeModal();
+  modalConfig.onSubmit(v);
+}
+
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+/* ===== USER ===== */
+function askUser(){
+  openModal({
+    title:"사용자",
+    type:"select",
+    options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
+    onSubmit:(n)=>{
+      localStorage.setItem("user",n);
+      state.currentUser=n;
+
+      if(!state.users.includes(n)){
+        state.users.push(n);
+        state.colors[n]=palette[state.users.length%palette.length];
+      }
+
+      save();
+    }
+  });
+}
+
+/* ===== CREATE ===== */
+document.getElementById("fab").onclick=()=>{
+  openModal({
+    title:"주제",
+    type:"text",
+    onSubmit:async t=>{
+
+      setTyping();
+
+      let theme={
+        id:Math.random().toString(36).substr(2,9),
+        title:t,
+        lines:[]
+      };
+
+      for(let i=0;i<t.length;i++){
+        const c=t[i];
+
+        const text=await new Promise(res=>{
+          openModal({
+            title:c,
+            type:"text",
+            onSubmit:res
+          });
+        });
+
+        theme.lines.push({
+          id:Math.random().toString(36).substr(2,9),
+          letter:c,
+          text,
+          user:state.currentUser
+        });
+      }
+
+      state.themes.push(theme);
+      save();
+    }
+  });
+};
+
+/* ===== EDIT ===== */
+function editLine(themeId,lineId){
+  const t=state.themes.find(x=>x.id===themeId);
+  const l=t.lines.find(x=>x.id===lineId);
+
+  openModal({
+    title:"수정",
+    type:"select",
+    options:["수정","취소"],
+    onSubmit:(r)=>{
+      if(r!=="수정") return;
+
+      openModal({
+        title:"내용 수정",
+        type:"text",
+        onSubmit:(txt)=>{
+          l.text=txt;
+          save();
+        }
+      },l.text);
+    }
+  });
+}
+
+/* ===== DELETE ===== */
+function deleteLine(themeId,lineId){
+  if(!confirm("삭제하시겠습니까?")) return;
+
+  const t=state.themes.find(x=>x.id===themeId);
+  t.lines=t.lines.filter(x=>x.id!==lineId);
+
+  save();
+}
+
+/* ===== MENU TOGGLE ===== */
+function toggleMenu(themeId,lineId){
+  if(openMenu.themeId===themeId && openMenu.lineId===lineId){
+    openMenu={themeId:null,lineId:null};
+  }else{
+    openMenu={themeId,lineId};
+  }
+  render();
+}
+
+/* ===== RENDER ===== */
+function render(){
+  const s=document.getElementById("story");
+  s.innerHTML="";
+
+  state.themes.forEach(t=>{
+    const c=document.createElement("div");
+    c.className="card";
+
+    c.innerHTML=`<b>${t.title}</b>`;
+
+    t.lines.forEach(l=>{
+      const d=document.createElement("div");
+      d.className="line";
+
+      d.innerHTML=`
+        <span>
+          <b style="color:${state.colors[l.user]}">${l.user}</b>
+          ${l.letter}: ${l.text}
+        </span>
+      `;
+
+      d.onclick=()=>editLine(t.id,l.id);
+
+      const menuBtn=document.createElement("button");
+      menuBtn.className="btn moreBtn";
+      menuBtn.innerText="⋯";
+
+      menuBtn.onclick=(e)=>{
+        e.stopPropagation();
+        toggleMenu(t.id,l.id);
+      };
+
+      d.appendChild(menuBtn);
+
+      if(openMenu.themeId===t.id && openMenu.lineId===l.id){
+        const del=document.createElement("button");
+        del.className="btn delBtn";
+        del.innerText="삭제";
+
+        del.onclick=(e)=>{
+          e.stopPropagation();
+          deleteLine(t.id,l.id);
+          openMenu={themeId:null,lineId:null};
+          render();
+        };
+
+        d.appendChild(del);
+      }
+
+      c.appendChild(d);
+    });
+
+    s.appendChild(c);
+  });
+}
+
+/* ===== USERS ===== */
+function renderUsers(){
+  const u=document.getElementById("users");
+  u.innerHTML="";
+
+  state.users.forEach(x=>{
+    const s=document.createElement("span");
+    s.innerText=x;
+    s.style.color=state.colors[x];
+    u.appendChild(s);
+  });
+}
+
+/* ===== SAVE ===== */
+function save(){
+  docRef.set(state);
+}
+
+</script>
+
+</body>
+</html>
