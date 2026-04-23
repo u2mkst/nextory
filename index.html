@@ -425,8 +425,16 @@ function editLine(themeId,lineId){
 function deleteLine(themeId,lineId){
   if(!confirm("삭제하시겠습니까?")) return;
 
-  const t=state.themes.find(x=>x.id===themeId);
-  t.lines=t.lines.filter(x=>x.id!==lineId);
+  const theme = state.themes.find(x=>x.id===themeId);
+  if(!theme) return;
+
+  // 1. 라인 삭제
+  theme.lines = theme.lines.filter(x=>x.id!==lineId);
+
+  // 2. ⭐ 핵심: 비었으면 theme 자체 삭제
+  if(theme.lines.length === 0){
+    state.themes = state.themes.filter(t=>t.id!==themeId);
+  }
 
   save();
 }
