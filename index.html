@@ -11,11 +11,11 @@
 <style>
 @font-face {
   font-family: 'Ria';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2') format('woff2');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2');
 }
 @font-face {
   font-family: 'Paperozi';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2');
 }
 
 :root{
@@ -69,7 +69,6 @@ body{
   width:8px;
   height:8px;
   border-radius:50%;
-  transition:0.3s;
 }
 
 .online{
@@ -88,14 +87,12 @@ body{
   100%{transform:scale(1);opacity:1;}
 }
 
-/* ===== TYPING ===== */
 #typing{
   padding:6px 12px;
   font-size:12px;
   opacity:0.7;
 }
 
-/* ===== STORY ===== */
 #story{
   display:flex;
   gap:16px;
@@ -136,7 +133,6 @@ body{
   color:#ff4d4d;
 }
 
-/* FAB */
 #fab{
   position:fixed;
   bottom:24px;
@@ -150,7 +146,6 @@ body{
   border:none;
 }
 
-/* MODAL */
 .modal{
   position:fixed;
   top:0;left:0;
@@ -182,11 +177,6 @@ body{
   }
   .card{
     min-width:unset;
-  }
-  #fab{
-    width:56px;
-    height:56px;
-    font-size:28px;
   }
 }
 </style>
@@ -239,6 +229,7 @@ let state = {
 };
 
 const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
+
 let modalConfig={};
 let openMenu={themeId:null,lineId:null};
 
@@ -270,10 +261,14 @@ window.onload=()=>{
 
   applyDark();
 
-  if(!localStorage.getItem("user")) askUser();
-  else state.currentUser=localStorage.getItem("user");
+  const savedUser = localStorage.getItem("user");
 
-  setOnline(true);
+  if(!savedUser){
+    askUser();
+  } else {
+    state.currentUser=savedUser;
+    setOnline(true);
+  }
 };
 
 window.addEventListener("beforeunload",()=>{
@@ -367,7 +362,7 @@ function closeModal(){
 /* ===== USER ===== */
 function askUser(){
   openModal({
-    title:"사용자",
+    title:"사용자 선택",
     type:"select",
     options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
     onSubmit:(n)=>{
@@ -379,6 +374,7 @@ function askUser(){
         state.colors[n]=palette[state.users.length%palette.length];
       }
 
+      setOnline(true);
       save();
     }
   });
@@ -550,7 +546,7 @@ function render(){
   });
 }
 
-/* ===== USERS (애니메이션 포함) ===== */
+/* ===== USERS ===== */
 function renderUsers(){
   const u=document.getElementById("users");
   u.innerHTML="";
@@ -575,7 +571,7 @@ function renderUsers(){
 
 /* ===== SAVE ===== */
 function save(){
-  docRef.set(state);
+  docRef.set(state, { merge:true });
 }
 
 </script>
