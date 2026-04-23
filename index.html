@@ -9,15 +9,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
+
+/* ===== FONTS ===== */
 @font-face {
   font-family: 'Ria';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Paperozi';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
 }
 
+/* ===== THEME ===== */
 :root{
   --bg:#f6f7fb;
   --card:#fff;
@@ -29,6 +32,7 @@ body.dark{
   --text:#eee;
 }
 
+/* ===== BASE ===== */
 body{
   margin:0;
   font-family:'Paperozi', sans-serif;
@@ -36,6 +40,7 @@ body{
   color:var(--text);
 }
 
+/* ===== HEADER ===== */
 .header{
   display:flex;
   justify-content:space-between;
@@ -54,7 +59,6 @@ body{
 /* ===== USERS ===== */
 .user-list{
   display:flex;
-  align-items:center;
   flex-wrap:wrap;
 }
 
@@ -87,12 +91,14 @@ body{
   100%{transform:scale(1);opacity:1;}
 }
 
+/* ===== TYPING ===== */
 #typing{
   padding:6px 12px;
   font-size:12px;
   opacity:0.7;
 }
 
+/* ===== STORY ===== */
 #story{
   display:flex;
   gap:16px;
@@ -133,6 +139,7 @@ body{
   color:#ff4d4d;
 }
 
+/* ===== FAB ===== */
 #fab{
   position:fixed;
   bottom:24px;
@@ -141,11 +148,12 @@ body{
   height:64px;
   border-radius:50%;
   font-size:32px;
-  background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
   color:white;
+  background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
   border:none;
 }
 
+/* ===== MODAL ===== */
 .modal{
   position:fixed;
   top:0;left:0;
@@ -171,14 +179,10 @@ body{
 }
 
 @media (max-width:768px){
-  #story{
-    flex-direction:column;
-    padding:12px;
-  }
-  .card{
-    min-width:unset;
-  }
+  #story{flex-direction:column;padding:12px;}
+  .card{min-width:unset;}
 }
+
 </style>
 </head>
 
@@ -254,6 +258,20 @@ docRef.onSnapshot(doc=>{
   }
 });
 
+/* ===== SAFE SAVE ===== */
+function save(){
+  docRef.update({
+    themes: state.themes,
+    users: state.users,
+    colors: state.colors,
+    dark: state.dark,
+    typing: state.typing,
+    onlineUsers: state.onlineUsers
+  }).catch(()=>{
+    docRef.set(state);
+  });
+}
+
 /* ===== INIT ===== */
 window.onload=()=>{
   const d=localStorage.getItem("dark");
@@ -261,29 +279,23 @@ window.onload=()=>{
 
   applyDark();
 
-  const savedUser = localStorage.getItem("user");
-
-  if(!savedUser){
+  const saved=localStorage.getItem("user");
+  if(!saved){
     askUser();
-  } else {
-    state.currentUser=savedUser;
+  }else{
+    state.currentUser=saved;
     setOnline(true);
   }
 };
 
-window.addEventListener("beforeunload",()=>{
-  setOnline(false);
-});
+window.addEventListener("beforeunload",()=>setOnline(false));
 
 /* ===== ONLINE ===== */
-function setOnline(isOnline){
+function setOnline(on){
   if(!state.currentUser) return;
 
-  if(isOnline){
-    state.onlineUsers[state.currentUser]=Date.now();
-  }else{
-    delete state.onlineUsers[state.currentUser];
-  }
+  if(on) state.onlineUsers[state.currentUser]=Date.now();
+  else delete state.onlineUsers[state.currentUser];
 
   save();
 }
@@ -301,19 +313,14 @@ function applyDark(){
 
 /* ===== TYPING ===== */
 function setTyping(){
-  state.typing={
-    user:state.currentUser,
-    time:Date.now()
-  };
+  state.typing={user:state.currentUser,time:Date.now()};
   save();
 }
 function renderTyping(){
   const el=document.getElementById("typing");
   if(state.typing && Date.now()-state.typing.time<3000){
     el.innerText=`${state.typing.user} is typing...`;
-  }else{
-    el.innerText="";
-  }
+  }else el.innerText="";
 }
 
 /* ===== MODAL ===== */
@@ -325,8 +332,7 @@ function openModal(config,def=""){
 
   if(config.type==="text"){
     const i=document.createElement("input");
-    i.id="mInput";
-    i.value=def;
+    i.id="mInput"; i.value=def;
     box.appendChild(i);
   }
 
@@ -335,8 +341,7 @@ function openModal(config,def=""){
     s.id="mSelect";
     config.options.forEach(o=>{
       const op=document.createElement("option");
-      op.value=o;
-      op.innerText=o;
+      op.value=o; op.innerText=o;
       s.appendChild(op);
     });
     box.appendChild(s);
@@ -349,8 +354,8 @@ function submitModal(){
   let v="";
   if(modalConfig.type==="text") v=document.getElementById("mInput").value.trim();
   if(modalConfig.type==="select") v=document.getElementById("mSelect").value;
-
   if(!v) return;
+
   closeModal();
   modalConfig.onSubmit(v);
 }
@@ -387,29 +392,19 @@ document.getElementById("fab").onclick=()=>{
     type:"text",
     onSubmit:async t=>{
       setTyping();
-      const writer = state.currentUser;
+      const writer=state.currentUser;
 
-      let theme={
-        id:Math.random().toString(36).substr(2,9),
-        title:t,
-        lines:[]
-      };
+      let theme={id:Date.now()+"",title:t,lines:[]};
 
-      for(let i=0;i<t.length;i++){
-        const c=t[i];
-
-        const text=await new Promise(res=>{
-          openModal({
-            title:c,
-            type:"text",
-            onSubmit:res
-          });
+      for(let c of t){
+        const txt=await new Promise(res=>{
+          openModal({title:c,type:"text",onSubmit:res});
         });
 
         theme.lines.push({
-          id:Math.random().toString(36).substr(2,9),
+          id:Math.random()+"",
           letter:c,
-          text,
+          text:txt,
           user:writer
         });
       }
@@ -420,69 +415,52 @@ document.getElementById("fab").onclick=()=>{
   });
 };
 
-/* ===== EDIT ===== */
-function editLine(themeId,lineId){
-  const t=state.themes.find(x=>x.id===themeId);
-  const l=t.lines.find(x=>x.id===lineId);
+/* ===== EDIT / DELETE ===== */
+function editLine(tid,lid){
+  const t=state.themes.find(x=>x.id===tid);
+  const l=t.lines.find(x=>x.id===lid);
 
   openModal({
-    title:"내용 수정",
+    title:"수정",
     type:"text",
-    onSubmit:(newText)=>{
+    onSubmit:(txt)=>{
       openModal({
-        title:"정말 수정할까요?",
+        title:"확인",
         type:"select",
         options:["확인","취소"],
         onSubmit:(c)=>{
-          if(c!=="확인") return;
-          l.text=newText;
-          save();
+          if(c==="확인"){l.text=txt;save();}
         }
       });
     }
   },l.text);
 }
 
-/* ===== DELETE ===== */
-function deleteLine(themeId,lineId){
+function deleteLine(tid,lid){
   openModal({
-    title:"삭제하시겠습니까?",
+    title:"삭제?",
     type:"select",
     options:["삭제","취소"],
     onSubmit:(f)=>{
       if(f!=="삭제") return;
 
       openModal({
-        title:"진짜 삭제합니다?",
+        title:"진짜?",
         type:"select",
         options:["확인","취소"],
         onSubmit:(s)=>{
           if(s!=="확인") return;
 
-          const theme = state.themes.find(x=>x.id===themeId);
-          if(!theme) return;
-
-          theme.lines = theme.lines.filter(x=>x.id!==lineId);
-
-          if(theme.lines.length===0){
-            state.themes = state.themes.filter(t=>t.id!==themeId);
-          }
+          const t=state.themes.find(x=>x.id===tid);
+          t.lines=t.lines.filter(x=>x.id!==lid);
+          if(t.lines.length===0)
+            state.themes=state.themes.filter(x=>x.id!==tid);
 
           save();
         }
       });
     }
   });
-}
-
-/* ===== MENU ===== */
-function toggleMenu(themeId,lineId){
-  if(openMenu.themeId===themeId && openMenu.lineId===lineId){
-    openMenu={themeId:null,lineId:null};
-  }else{
-    openMenu={themeId,lineId};
-  }
-  render();
 }
 
 /* ===== RENDER ===== */
@@ -506,39 +484,22 @@ function render(){
         </span>
       `;
 
-      const menuBtn=document.createElement("button");
-      menuBtn.className="btn moreBtn";
-      menuBtn.innerText="⋯";
-
-      menuBtn.onclick=(e)=>{
+      const btn=document.createElement("button");
+      btn.innerText="⋯";
+      btn.onclick=(e)=>{
         e.stopPropagation();
-        toggleMenu(t.id,l.id);
+        openModal({
+          title:"메뉴",
+          type:"select",
+          options:["수정","삭제","취소"],
+          onSubmit:(c)=>{
+            if(c==="수정") editLine(t.id,l.id);
+            if(c==="삭제") deleteLine(t.id,l.id);
+          }
+        });
       };
 
-      d.appendChild(menuBtn);
-
-      if(openMenu.themeId===t.id && openMenu.lineId===l.id){
-
-        const edit=document.createElement("button");
-        edit.className="btn";
-        edit.innerText="수정";
-        edit.onclick=(e)=>{
-          e.stopPropagation();
-          editLine(t.id,l.id);
-        };
-
-        const del=document.createElement("button");
-        del.className="btn delBtn";
-        del.innerText="삭제";
-        del.onclick=(e)=>{
-          e.stopPropagation();
-          deleteLine(t.id,l.id);
-        };
-
-        d.appendChild(edit);
-        d.appendChild(del);
-      }
-
+      d.appendChild(btn);
       c.appendChild(d);
     });
 
@@ -546,32 +507,25 @@ function render(){
   });
 }
 
-/* ===== USERS ===== */
 function renderUsers(){
   const u=document.getElementById("users");
   u.innerHTML="";
 
   state.users.forEach(x=>{
-    const wrap=document.createElement("div");
-    wrap.className="user";
+    const w=document.createElement("div");
+    w.className="user";
 
     const dot=document.createElement("div");
-    const isOnline = state.onlineUsers && state.onlineUsers[x];
-    dot.className = "dot " + (isOnline ? "online" : "offline");
+    dot.className="dot "+(state.onlineUsers[x]?"online":"offline");
 
     const name=document.createElement("span");
     name.innerText=x;
-    name.style.color=state.colors[x] || "#999";
+    name.style.color=state.colors[x];
 
-    wrap.appendChild(dot);
-    wrap.appendChild(name);
-    u.appendChild(wrap);
+    w.appendChild(dot);
+    w.appendChild(name);
+    u.appendChild(w);
   });
-}
-
-/* ===== SAVE ===== */
-function save(){
-  docRef.set(state, { merge:true });
 }
 
 </script>
