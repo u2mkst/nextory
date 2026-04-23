@@ -9,18 +9,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
 <style>
-
-/* ===== FONTS ===== */
 @font-face {
   font-family: 'Ria';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2') format('woff2');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/RiaSans-ExtraBold.woff2');
 }
 @font-face {
   font-family: 'Paperozi';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2');
 }
 
-/* ===== THEME ===== */
 :root{
   --bg:#f6f7fb;
   --card:#fff;
@@ -32,7 +29,6 @@ body.dark{
   --text:#eee;
 }
 
-/* ===== BASE ===== */
 body{
   margin:0;
   font-family:'Paperozi', sans-serif;
@@ -40,15 +36,11 @@ body{
   color:var(--text);
 }
 
-/* ===== HEADER ===== */
 .header{
   display:flex;
   justify-content:space-between;
-  align-items:center;
   padding:12px;
   background:var(--card);
-  position:sticky;
-  top:0;
 }
 
 .title{
@@ -56,7 +48,6 @@ body{
   font-size:20px;
 }
 
-/* ===== USERS ===== */
 .user-list{
   display:flex;
   flex-wrap:wrap;
@@ -77,7 +68,6 @@ body{
 
 .online{
   background:#4cd964;
-  box-shadow:0 0 6px #4cd964;
   animation:pulse 1.5s infinite;
 }
 
@@ -86,19 +76,16 @@ body{
 }
 
 @keyframes pulse{
-  0%{transform:scale(1);opacity:1;}
-  50%{transform:scale(1.4);opacity:0.6;}
-  100%{transform:scale(1);opacity:1;}
+  0%{transform:scale(1);}
+  50%{transform:scale(1.4);}
+  100%{transform:scale(1);}
 }
 
-/* ===== TYPING ===== */
 #typing{
   padding:6px 12px;
   font-size:12px;
-  opacity:0.7;
 }
 
-/* ===== STORY ===== */
 #story{
   display:flex;
   gap:16px;
@@ -117,7 +104,6 @@ body{
   padding:6px;
   display:flex;
   justify-content:space-between;
-  border-bottom:1px solid rgba(0,0,0,0.1);
   cursor:pointer;
 }
 
@@ -125,50 +111,33 @@ body{
   background:rgba(79,124,255,0.1);
 }
 
-.btn{
-  border:none;
-  background:transparent;
-  cursor:pointer;
-}
-
-.moreBtn{
-  font-size:18px;
-}
-
-.delBtn{
-  color:#ff4d4d;
-}
-
-/* ===== FAB ===== */
 #fab{
   position:fixed;
-  bottom:24px;
-  right:24px;
-  width:64px;
-  height:64px;
+  bottom:20px;
+  right:20px;
+  width:60px;
+  height:60px;
   border-radius:50%;
-  font-size:32px;
-  color:white;
+  font-size:30px;
   background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
+  color:white;
   border:none;
 }
 
-/* ===== MODAL ===== */
 .modal{
   position:fixed;
   top:0;left:0;
   width:100%;height:100%;
-  background:rgba(0,0,0,0.5);
   display:none;
+  background:rgba(0,0,0,0.5);
 }
 
 .modal-box{
   background:var(--card);
-  width:320px;
-  margin:15% auto;
+  width:300px;
+  margin:20% auto;
   padding:20px;
-  border-radius:16px;
-  text-align:center;
+  border-radius:12px;
 }
 
 .modal-box input,
@@ -179,10 +148,8 @@ body{
 }
 
 @media (max-width:768px){
-  #story{flex-direction:column;padding:12px;}
-  .card{min-width:unset;}
+  #story{flex-direction:column;}
 }
-
 </style>
 </head>
 
@@ -232,22 +199,24 @@ let state = {
   onlineUsers:{}
 };
 
+let isLoaded = false;
 const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
 
 let modalConfig={};
-let openMenu={themeId:null,lineId:null};
 
 /* ===== REALTIME ===== */
 docRef.onSnapshot(doc=>{
   if(doc.exists){
-    const data = doc.data();
+    const d = doc.data();
 
-    state.themes = data.themes || [];
-    state.users = data.users || [];
-    state.colors = data.colors || {};
-    state.dark = data.dark || false;
-    state.typing = data.typing || {};
-    state.onlineUsers = data.onlineUsers || {};
+    state.themes = d.themes || [];
+    state.users = d.users || [];
+    state.colors = d.colors || {};
+    state.dark = d.dark || false;
+    state.typing = d.typing || {};
+    state.onlineUsers = d.onlineUsers || {};
+
+    isLoaded = true;
 
     applyDark();
     render();
@@ -258,8 +227,10 @@ docRef.onSnapshot(doc=>{
   }
 });
 
-/* ===== SAFE SAVE ===== */
+/* ===== SAVE (안전) ===== */
 function save(){
+  if(!isLoaded) return;
+
   docRef.update({
     themes: state.themes,
     users: state.users,
@@ -277,18 +248,38 @@ window.onload=()=>{
   const d=localStorage.getItem("dark");
   if(d!==null) state.dark=d==="true";
 
-  applyDark();
+  const u=localStorage.getItem("user");
 
-  const saved=localStorage.getItem("user");
-  if(!saved){
+  if(!u){
     askUser();
   }else{
-    state.currentUser=saved;
+    state.currentUser=u;
     setOnline(true);
   }
 };
 
 window.addEventListener("beforeunload",()=>setOnline(false));
+
+/* ===== USER ===== */
+function askUser(){
+  openModal({
+    title:"사용자 선택",
+    type:"select",
+    options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
+    onSubmit:(n)=>{
+      localStorage.setItem("user",n);
+      state.currentUser=n;
+
+      if(!state.users.includes(n)){
+        state.users.push(n);
+        state.colors[n]=palette[state.users.length%palette.length];
+      }
+
+      setOnline(true);
+      save();
+    }
+  });
+}
 
 /* ===== ONLINE ===== */
 function setOnline(on){
@@ -327,6 +318,7 @@ function renderTyping(){
 function openModal(config,def=""){
   modalConfig=config;
   document.getElementById("modalTitle").innerText=config.title;
+
   const box=document.getElementById("modalContent");
   box.innerHTML="";
 
@@ -341,7 +333,8 @@ function openModal(config,def=""){
     s.id="mSelect";
     config.options.forEach(o=>{
       const op=document.createElement("option");
-      op.value=o; op.innerText=o;
+      op.value=o;
+      op.innerText=o;
       s.appendChild(op);
     });
     box.appendChild(s);
@@ -354,6 +347,7 @@ function submitModal(){
   let v="";
   if(modalConfig.type==="text") v=document.getElementById("mInput").value.trim();
   if(modalConfig.type==="select") v=document.getElementById("mSelect").value;
+
   if(!v) return;
 
   closeModal();
@@ -362,27 +356,6 @@ function submitModal(){
 
 function closeModal(){
   document.getElementById("modal").style.display="none";
-}
-
-/* ===== USER ===== */
-function askUser(){
-  openModal({
-    title:"사용자 선택",
-    type:"select",
-    options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
-    onSubmit:(n)=>{
-      localStorage.setItem("user",n);
-      state.currentUser=n;
-
-      if(!state.users.includes(n)){
-        state.users.push(n);
-        state.colors[n]=palette[state.users.length%palette.length];
-      }
-
-      setOnline(true);
-      save();
-    }
-  });
 }
 
 /* ===== CREATE ===== */
@@ -445,7 +418,7 @@ function deleteLine(tid,lid){
       if(f!=="삭제") return;
 
       openModal({
-        title:"진짜?",
+        title:"진짜 삭제?",
         type:"select",
         options:["확인","취소"],
         onSubmit:(s)=>{
@@ -453,8 +426,10 @@ function deleteLine(tid,lid){
 
           const t=state.themes.find(x=>x.id===tid);
           t.lines=t.lines.filter(x=>x.id!==lid);
-          if(t.lines.length===0)
+
+          if(t.lines.length===0){
             state.themes=state.themes.filter(x=>x.id!==tid);
+          }
 
           save();
         }
@@ -486,6 +461,7 @@ function render(){
 
       const btn=document.createElement("button");
       btn.innerText="⋯";
+
       btn.onclick=(e)=>{
         e.stopPropagation();
         openModal({
@@ -507,6 +483,7 @@ function render(){
   });
 }
 
+/* ===== USERS ===== */
 function renderUsers(){
   const u=document.getElementById("users");
   u.innerHTML="";
