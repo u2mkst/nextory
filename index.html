@@ -31,7 +31,7 @@ body.dark{
 
 body{
   margin:0;
-  font-family:'Paperozi';
+  font-family:'Paperozi', sans-serif;
   background:var(--bg);
   color:var(--text);
 }
@@ -40,32 +40,46 @@ body{
 .header{
   display:flex;
   justify-content:space-between;
+  align-items:center;
   padding:12px;
   background:var(--card);
 }
 
-.title{font-family:'Ria';}
+.title{
+  font-family:'Ria';
+  font-size:20px;
+}
 
+/* 메뉴 버튼 */
 .menuBtn{
+  display:none;
   font-size:22px;
   background:none;
   border:none;
 }
 
-/* DESKTOP USER */
+/* USER */
 .user-list{
   display:flex;
-  gap:10px;
+  gap:12px;
 }
 
 .user{
   display:flex;
   align-items:center;
-  gap:5px;
+  gap:6px;
 }
 
 .dot{
-  width:8px;height:8px;border-radius:50%;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+}
+
+@keyframes pulse{
+  0%{transform:scale(1);}
+  50%{transform:scale(1.4);}
+  100%{transform:scale(1);}
 }
 
 /* STORY */
@@ -83,12 +97,22 @@ body{
   border-radius:14px;
 }
 
+.line{
+  padding:6px;
+  cursor:pointer;
+}
+
+.line:hover{
+  background:rgba(79,124,255,0.1);
+}
+
 /* FAB */
 #fab{
   position:fixed;
   bottom:20px;
   right:20px;
-  width:60px;height:60px;
+  width:60px;
+  height:60px;
   border-radius:50%;
   font-size:30px;
   background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
@@ -115,26 +139,33 @@ body{
 
 /* 📱 MOBILE */
 @media (max-width:768px){
+
   #story{
-    flex-direction:column; /* ⭐ 핵심 */
+    flex-direction:column;
     overflow-x:hidden;
   }
 
   .user-list{
-    display:none; /* 숨김 */
+    display:none;
+  }
+
+  .menuBtn{
+    display:block;
   }
 }
 
-/* 📱 SIDE MENU */
+/* 📱 SIDE MENU (덮어쓰기 방식) */
 #sideMenu{
   position:fixed;
-  top:0;left:-260px;
+  top:0;
+  left:-280px;
   width:260px;
   height:100%;
   background:var(--card);
+  box-shadow:2px 0 12px rgba(0,0,0,0.15);
   padding:20px;
   transition:0.3s;
-  z-index:20;
+  z-index:999;
 }
 
 #sideMenu.open{
@@ -144,12 +175,11 @@ body{
 .menuUser{
   display:flex;
   justify-content:space-between;
-  margin-bottom:8px;
+  margin-bottom:10px;
 }
 
 .online{color:#4cd964;}
 .offline{color:#aaa;}
-
 </style>
 </head>
 
@@ -159,6 +189,8 @@ body{
   <button class="menuBtn" onclick="toggleMenu()">☰</button>
   <div class="title">KST Nextory</div>
   <div class="user-list" id="users"></div>
+  <button onclick="changeUser()">👤</button>
+  <button onclick="toggleDark()">🌙</button>
 </div>
 
 <!-- 📱 SIDE MENU -->
@@ -200,10 +232,11 @@ const db = firebase.firestore();
 const docRef = db.collection("stories").doc("main");
 
 /* STATE */
-let state={
+let state = {
   themes:[],
   users:[],
   colors:{},
+  dark:false,
   currentUser:"",
   onlineUsers:{}
 };
@@ -220,10 +253,18 @@ docRef.onSnapshot(doc=>{
     state.themes=d.themes||[];
     state.users=d.users||[];
     state.colors=d.colors||{};
+    state.dark=d.dark||false;
     state.onlineUsers=d.onlineUsers||{};
+
+    state.users.forEach((u,i)=>{
+      if(!state.colors[u]){
+        state.colors[u]=palette[i%palette.length];
+      }
+    });
 
     isLoaded=true;
 
+    applyDark();
     render();
     renderUsers();
     renderMenuUsers();
@@ -241,10 +282,34 @@ function toggleMenu(){
   document.getElementById("sideMenu").classList.toggle("open");
 }
 
-/* USER LIST */
+/* USERS */
 function renderUsers(){
   const u=document.getElementById("users");
   u.innerHTML="";
+
+  state.users.forEach(x=>{
+    const wrap=document.createElement("div");
+    wrap.className="user";
+
+    const dot=document.createElement("div");
+    const isOnline=state.onlineUsers[x];
+
+    dot.className="dot";
+    dot.style.background=isOnline?state.colors[x]:"#ccc";
+
+    if(isOnline){
+      dot.style.boxShadow=`0 0 8px ${state.colors[x]}`;
+      dot.style.animation="pulse 1.5s infinite";
+    }
+
+    const name=document.createElement("span");
+    name.innerText=x;
+    name.style.color=state.colors[x];
+
+    wrap.appendChild(dot);
+    wrap.appendChild(name);
+    u.appendChild(wrap);
+  });
 }
 
 function renderMenuUsers(){
@@ -268,38 +333,45 @@ function renderMenuUsers(){
   });
 }
 
-/* DARK */
-function toggleDark(){
-  document.body.classList.toggle("dark");
-}
-
 /* USER */
-function changeUser(){
-  askUser();
-}
-
 function askUser(){
   openModal({
     title:"사용자 선택",
     type:"select",
     options:["한이","바가","라면","진상","마토","조교","진지","제갈태윤","지후"],
-    onSubmit:(n)=>{
-      localStorage.setItem("user",n);
-      state.currentUser=n;
-
-      if(!state.users.includes(n)){
-        state.users.push(n);
-        state.colors[n]=palette[state.users.length%palette.length];
-      }
-
-      state.onlineUsers[n]=Date.now();
-      save();
-    }
+    onSubmit:setUser
   });
 }
 
+function changeUser(){
+  askUser();
+}
+
+function setUser(n){
+  localStorage.setItem("user",n);
+  state.currentUser=n;
+
+  if(!state.users.includes(n)){
+    state.users.push(n);
+    state.colors[n]=palette[state.users.length%palette.length];
+  }
+
+  state.onlineUsers[n]=Date.now();
+  save();
+}
+
+/* DARK */
+function toggleDark(){
+  state.dark=!state.dark;
+  applyDark();
+  save();
+}
+function applyDark(){
+  document.body.classList.toggle("dark",state.dark);
+}
+
 /* MODAL */
-function openModal(c){
+function openModal(c,def=""){
   modalConfig=c;
   document.getElementById("modalTitle").innerText=c.title;
 
@@ -308,7 +380,7 @@ function openModal(c){
 
   if(c.type==="text"){
     const i=document.createElement("input");
-    i.id="mInput";
+    i.id="mInput"; i.value=def;
     box.appendChild(i);
   }
 
@@ -328,7 +400,10 @@ function openModal(c){
 }
 
 function submitModal(){
-  let v=document.getElementById("mInput")?.value || document.getElementById("mSelect")?.value;
+  let v="";
+  if(modalConfig.type==="text") v=document.getElementById("mInput").value.trim();
+  if(modalConfig.type==="select") v=document.getElementById("mSelect").value;
+
   if(!v) return;
 
   closeModal();
@@ -345,10 +420,12 @@ document.getElementById("fab").onclick=()=>{
     title:"주제",
     type:"text",
     onSubmit:async t=>{
+      const writer=state.currentUser;
+
       let theme={
         id:Date.now()+"",
         title:t,
-        owner:state.currentUser,
+        owner:writer,
         lines:[]
       };
 
@@ -370,6 +447,56 @@ document.getElementById("fab").onclick=()=>{
   });
 };
 
+/* EDIT / DELETE */
+function editLine(tid,lid){
+  const t=state.themes.find(x=>x.id===tid);
+  const l=t.lines.find(x=>x.id===lid);
+
+  openModal({
+    title:"수정",
+    type:"text",
+    onSubmit:(txt)=>{
+      openModal({
+        title:"확인",
+        type:"select",
+        options:["확인","취소"],
+        onSubmit:(c)=>{
+          if(c==="확인"){l.text=txt;save();}
+        }
+      });
+    }
+  },l.text);
+}
+
+function deleteLine(tid,lid){
+  openModal({
+    title:"삭제?",
+    type:"select",
+    options:["삭제","취소"],
+    onSubmit:(r)=>{
+      if(r!=="삭제") return;
+
+      openModal({
+        title:"진짜 삭제?",
+        type:"select",
+        options:["확인","취소"],
+        onSubmit:(c)=>{
+          if(c!=="확인") return;
+
+          const t=state.themes.find(x=>x.id===tid);
+          t.lines=t.lines.filter(x=>x.id!==lid);
+
+          if(t.lines.length===0){
+            state.themes=state.themes.filter(x=>x.id!==tid);
+          }
+
+          save();
+        }
+      });
+    }
+  });
+}
+
 /* RENDER */
 function render(){
   const s=document.getElementById("story");
@@ -390,7 +517,21 @@ function render(){
 
     t.lines.forEach(l=>{
       const d=document.createElement("div");
-      d.innerHTML=`${l.letter}: ${l.text}`;
+      d.className="line";
+      d.innerText=`${l.letter}: ${l.text}`;
+
+      d.onclick=()=>{
+        openModal({
+          title:"메뉴",
+          type:"select",
+          options:["수정","삭제","취소"],
+          onSubmit:(c)=>{
+            if(c==="수정") editLine(t.id,l.id);
+            if(c==="삭제") deleteLine(t.id,l.id);
+          }
+        });
+      };
+
       c.appendChild(d);
     });
 
