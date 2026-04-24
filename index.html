@@ -36,7 +36,6 @@ body{
   color:var(--text);
 }
 
-/* HEADER */
 .header{
   display:flex;
   align-items:center;
@@ -44,114 +43,57 @@ body{
   padding:12px;
   background:var(--card);
 }
-.left{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.title{
-  font-family:'Ria';
-  font-size:20px;
-}
-.menuBtn{
-  font-size:22px;
-  background:none;
-  border:none;
-  color:var(--text);
-}
+.left{display:flex;gap:10px;align-items:center;}
+.title{font-family:'Ria';font-size:20px;}
+.menuBtn{font-size:22px;background:none;border:none;color:var(--text);}
 
-/* STORY */
-#story{
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-  padding:20px;
-  overflow-y:auto;
-}
-.card{
-  background:var(--card);
-  padding:14px;
-  border-radius:14px;
-}
-.line{
-  padding:6px;
+#story{display:flex;flex-direction:column;gap:16px;padding:20px;}
+.card{background:var(--card);padding:14px;border-radius:14px;}
+.line{padding:6px;cursor:pointer;}
+.line:hover{background:rgba(79,124,255,0.1);}
+
+.like{
+  margin-top:6px;
   cursor:pointer;
-}
-.line:hover{
-  background:rgba(79,124,255,0.1);
+  font-size:14px;
 }
 
-/* FAB */
 #fab{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  width:60px;height:60px;
-  border-radius:50%;
-  font-size:30px;
-  background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
-  color:white;
-  border:none;
+  position:fixed;bottom:20px;right:20px;
+  width:60px;height:60px;border-radius:50%;
+  font-size:30px;background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
+  color:white;border:none;
 }
 
-/* SCROLL BTN */
 #scrollBtn{
-  position:fixed;
-  bottom:90px;
-  right:20px;
-  width:52px;height:52px;
-  border-radius:50%;
-  border:none;
-  background:rgba(255,255,255,0.6);
-  backdrop-filter:blur(10px);
-  opacity:0;
-  transform:translateY(20px);
-  transition:0.25s;
+  position:fixed;bottom:90px;right:20px;
+  width:52px;height:52px;border-radius:50%;
+  border:none;background:rgba(255,255,255,0.6);
+  opacity:0;transition:0.25s;
 }
-#scrollBtn.show{
-  opacity:1;
-  transform:translateY(0);
-}
+#scrollBtn.show{opacity:1;}
 
-/* MODAL */
 .modal{
-  position:fixed;
-  width:100%;height:100%;
-  background:rgba(0,0,0,0.5);
-  display:none;
+  position:fixed;width:100%;height:100%;
+  background:rgba(0,0,0,0.5);display:none;
 }
 .modal-box{
   background:var(--card);
-  width:300px;
-  margin:20% auto;
-  padding:20px;
+  width:300px;margin:20% auto;padding:20px;
   border-radius:12px;
 }
-
-/* MENU */
-#overlay{
-  position:fixed;
-  width:100%;height:100%;
-  backdrop-filter:blur(10px);
-  display:none;
+.modal-box input,.modal-box select{
+  width:100%;padding:10px;margin-top:10px;
 }
-#overlay.open{display:block;}
 
+#overlay{position:fixed;width:100%;height:100%;display:none;}
+#overlay.open{display:block;}
 #sideMenu{
-  position:fixed;
-  left:-280px;
-  width:260px;
-  height:100%;
-  background:var(--card);
-  padding:20px;
-  transition:0.3s;
+  position:fixed;left:-280px;width:260px;height:100%;
+  background:var(--card);padding:20px;transition:0.3s;
 }
 #sideMenu.open{left:0;}
-
-.menuUser{
-  display:flex;
-  justify-content:space-between;
-}
+.menuUser{display:flex;justify-content:space-between;}
 </style>
 </head>
 
@@ -169,10 +111,8 @@ body{
 <div id="sideMenu">
   <h3>사용자</h3>
   <div id="menuUsers"></div>
-
   <hr>
-  <button onclick="toggleDark()">🌙 다크모드</button>
-  <br><br>
+  <button onclick="toggleDark()">🌙 다크모드</button><br><br>
   <button onclick="changeUser()">👤 계정 변경</button>
 </div>
 
@@ -203,23 +143,37 @@ const db = firebase.firestore();
 const docRef = db.collection("stories").doc("main");
 
 /* STATE */
-let state={themes:[],users:[],colors:{},currentUser:"",onlineUsers:{}};
-let modalConfig={};
-let selectedUser=null;
-let isLoaded=false;
+let state={themes:[],users:[],colors:{},currentUser:""};
+let modalConfig={},selectedUser=null,isLoaded=false;
 
-/* 🎨 색상 팔레트 */
-const palette=[
-"#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff",
-"#ff9f1c","#2ec4b6","#e71d36","#ff66c4","#00bbf9"
-];
+const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
+
+/* 초기 데이터 */
+async function init(){
+  const d=await docRef.get();
+  if(!d.exists){
+    await docRef.set({
+      themes:[],
+      users:["한이"],
+      colors:{ "한이":"#ff6b6b" },
+      currentUser:"한이"
+    });
+  }
+}
 
 /* REALTIME */
 docRef.onSnapshot(doc=>{
   if(doc.exists){
     state=doc.data();
 
-    // 색 자동 생성
+    state.themes=state.themes||[];
+    state.users=state.users||[];
+    state.colors=state.colors||{};
+
+    if(!state.currentUser){
+      state.currentUser=state.users[0];
+    }
+
     state.users.forEach((u,i)=>{
       if(!state.colors[u]){
         state.colors[u]=palette[i%palette.length];
@@ -233,10 +187,7 @@ docRef.onSnapshot(doc=>{
 });
 
 /* SAVE */
-function save(){
-  if(!isLoaded) return;
-  docRef.set(state);
-}
+function save(){ if(isLoaded) docRef.set(state); }
 
 /* USER */
 function changeUser(){
@@ -244,14 +195,12 @@ function changeUser(){
     title:"사용자",
     type:"select",
     options:["한이","바가","라면","지후"],
-    onSubmit:(n)=>{
+    onSubmit:n=>{
       state.currentUser=n;
-
       if(!state.users.includes(n)){
         state.users.push(n);
-        state.colors[n]=palette[state.users.length%palette.length];
+        state.colors[n]=palette[(state.users.length-1)%palette.length];
       }
-
       save();
     }
   });
@@ -275,8 +224,7 @@ function openModal(c,def=""){
 
   if(c.type==="text"){
     const i=document.createElement("input");
-    i.value=def;
-    i.id="mInput";
+    i.value=def;i.id="mInput";
     modalContent.appendChild(i);
   }
 
@@ -285,8 +233,7 @@ function openModal(c,def=""){
     s.id="mSelect";
     c.options.forEach(o=>{
       const op=document.createElement("option");
-      op.value=o;
-      op.innerText=o;
+      op.value=o;op.innerText=o;
       s.appendChild(op);
     });
     modalContent.appendChild(s);
@@ -296,23 +243,32 @@ function openModal(c,def=""){
 }
 
 function submitModal(){
-  let v=document.getElementById("mInput")?.value || document.getElementById("mSelect")?.value;
+  let v=document.getElementById("mInput")?.value ||
+        document.getElementById("mSelect")?.value;
   if(!v) return;
   modal.style.display="none";
   modalConfig.onSubmit(v);
 }
-
-function closeModal(){
-  modal.style.display="none";
-}
+function closeModal(){ modal.style.display="none"; }
 
 /* CREATE */
 fab.onclick=()=>{
+  if(!state.currentUser){
+    alert("사용자 먼저 설정!");
+    return;
+  }
+
   openModal({
     title:"주제",
     type:"text",
     onSubmit:async t=>{
-      let theme={id:Date.now()+"",title:t,owner:state.currentUser,lines:[]};
+      let theme={
+        id:Date.now()+"",
+        title:t,
+        owner:state.currentUser,
+        lines:[],
+        likes:[] // ⭐ 좋아요 추가
+      };
 
       for(let c of t){
         const txt=await new Promise(res=>{
@@ -327,33 +283,56 @@ fab.onclick=()=>{
   });
 };
 
-/* EDIT */
-function editLine(tid,lid){
+/* 좋아요 */
+function toggleLike(tid){
   const t=state.themes.find(x=>x.id===tid);
-  const l=t.lines.find(x=>x.id===lid);
+  if(!t.likes) t.likes=[];
 
-  openModal({
-    title:"수정",
-    type:"text",
-    onSubmit:(txt)=>{
-      l.text=txt;
-      save();
-    }
-  },l.text);
-}
-
-/* DELETE */
-function deleteLine(tid,lid){
-  if(!confirm("삭제할까요?")) return;
-
-  const t=state.themes.find(x=>x.id===tid);
-  t.lines=t.lines.filter(x=>x.id!==lid);
-
-  if(t.lines.length===0){
-    state.themes=state.themes.filter(x=>x.id!==tid);
-  }
+  const i=t.likes.indexOf(state.currentUser);
+  if(i>-1) t.likes.splice(i,1);
+  else t.likes.push(state.currentUser);
 
   save();
+}
+
+/* RENDER */
+function render(){
+  story.innerHTML="";
+
+  const list = selectedUser
+    ? state.themes.filter(t=>t.owner===selectedUser)
+    : state.themes;
+
+  list.forEach(t=>{
+    if(!t.lines) t.lines=[];
+    if(!t.likes) t.likes=[];
+
+    const c=document.createElement("div");
+    c.className="card";
+
+    c.innerHTML=`
+      <div style="display:flex;justify-content:space-between;">
+        <b>${t.title}</b>
+        <span onclick="filterByUser('${t.owner}')"
+          style="color:${state.colors[t.owner]};cursor:pointer;font-size:12px;">
+          ${t.owner}
+        </span>
+      </div>
+
+      <div class="like" onclick="toggleLike('${t.id}')">
+        ${t.likes.includes(state.currentUser) ? "❤️" : "🤍"} ${t.likes.length}
+      </div>
+    `;
+
+    t.lines.forEach(l=>{
+      const d=document.createElement("div");
+      d.className="line";
+      d.innerText=`${l.letter}: ${l.text}`;
+      c.appendChild(d);
+    });
+
+    story.appendChild(c);
+  });
 }
 
 /* FILTER */
@@ -362,60 +341,25 @@ function filterByUser(u){
   render();
 }
 
-/* RENDER */
-function render(){
-  const s=document.getElementById("story");
-  s.innerHTML="";
-
-  const list = selectedUser
-    ? state.themes.filter(t=>t.owner===selectedUser)
-    : state.themes;
-
-  list.forEach(t=>{
-    const c=document.createElement("div");
-    c.className="card";
-
-    c.innerHTML=`
-      <div style="display:flex;justify-content:space-between;">
-        <b>${t.title}</b>
-        <span onclick="filterByUser('${t.owner}')" 
-          style="color:${state.colors[t.owner]};cursor:pointer;font-size:12px;">
-          ${t.owner}
-        </span>
-      </div>
-    `;
-
-    t.lines.forEach(l=>{
-      const d=document.createElement("div");
-      d.className="line";
-      d.innerText=`${l.letter}: ${l.text}`;
-
-      d.onclick=()=>{
-        const action=prompt("수정 / 삭제");
-        if(action==="수정") editLine(t.id,l.id);
-        if(action==="삭제") deleteLine(t.id,l.id);
-      };
-
-      c.appendChild(d);
-    });
-
-    s.appendChild(c);
-  });
-}
-
-/* SCROLL BTN */
+/* SCROLL */
 const scrollBtn=document.getElementById("scrollBtn");
 let timer;
 
 window.addEventListener("scroll",()=>{
-  const max=document.body.scrollHeight-window.innerHeight;
+  const max=document.body.scrollHeight - window.innerHeight;
 
   if(window.scrollY < max/2){
     scrollBtn.innerText="⬇";
-    scrollBtn.onclick=()=>window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+    scrollBtn.onclick=()=>window.scrollTo({
+      top:document.body.scrollHeight,
+      behavior:"smooth"
+    });
   }else{
     scrollBtn.innerText="⬆";
-    scrollBtn.onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+    scrollBtn.onclick=()=>window.scrollTo({
+      top:0,
+      behavior:"smooth"
+    });
   }
 
   scrollBtn.classList.add("show");
@@ -423,6 +367,7 @@ window.addEventListener("scroll",()=>{
   timer=setTimeout(()=>scrollBtn.classList.remove("show"),1000);
 });
 
+/* DARK */
 function toggleDark(){
   document.body.classList.toggle("dark");
 }
@@ -437,6 +382,9 @@ function renderMenuUsers(){
     menuUsers.appendChild(div);
   });
 }
+
+/* 시작 */
+init();
 
 </script>
 
