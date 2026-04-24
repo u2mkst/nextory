@@ -44,13 +44,59 @@ body{
   background:var(--card);
 }
 .left{display:flex;gap:10px;align-items:center;}
-.title{font-family:'Ria';font-size:20px;}
+.title{font-family:'Ria';font-size:20px; cursor:pointer;} /* 커서 포인터 추가 */
 .menuBtn{font-size:22px;background:none;border:none;color:var(--text);}
 
 #story{display:flex;flex-direction:column;gap:16px;padding:20px;}
 .card{background:var(--card);padding:14px;border-radius:14px;}
-.line{padding:6px;cursor:pointer;}
+
+.line{
+  padding:8px 6px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-radius: 6px;
+  position: relative;
+}
 .line:hover{background:rgba(79,124,255,0.1);}
+
+.more-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #888;
+  cursor: pointer;
+  padding: 0 5px;
+}
+.line-menu {
+  display: none;
+  position: absolute;
+  right: 25px;
+  top: 10px;
+  background: var(--card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 10;
+  flex-direction: column;
+  min-width: 60px;
+}
+body.dark .line-menu {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.line-menu.show { display: flex; }
+.line-menu button {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-family: 'Paperozi';
+  cursor: pointer;
+  text-align: center;
+  color: var(--text);
+  font-size: 13px;
+}
+.line-menu button:hover { background: rgba(128,128,128,0.1); }
+.line-menu .btn-del { color: #ff6b6b; }
 
 .like{
   margin-top:6px;
@@ -62,38 +108,42 @@ body{
   position:fixed;bottom:20px;right:20px;
   width:60px;height:60px;border-radius:50%;
   font-size:30px;background:linear-gradient(135deg,#4F7CFF,#8B5CFF);
-  color:white;border:none;
+  color:white;border:none; cursor:pointer;
 }
 
 #scrollBtn{
   position:fixed;bottom:90px;right:20px;
   width:52px;height:52px;border-radius:50%;
   border:none;background:rgba(255,255,255,0.6);
-  opacity:0;transition:0.25s;
+  opacity:0;transition:0.25s; cursor:pointer;
 }
 #scrollBtn.show{opacity:1;}
 
 .modal{
-  position:fixed;width:100%;height:100%;
-  background:rgba(0,0,0,0.5);display:none;
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.5);display:none; z-index: 1000;
 }
 .modal-box{
   background:var(--card);
-  width:300px;margin:20% auto;padding:20px;
+  width:300px;margin:30% auto;padding:20px;
   border-radius:12px;
 }
 .modal-box input,.modal-box select{
-  width:100%;padding:10px;margin-top:10px;
+  width:90%;padding:10px;margin-top:10px; margin-bottom: 15px;
+  border: 1px solid #ccc; border-radius: 6px; font-family: 'Paperozi';
+}
+.modal-box button {
+  padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-family: 'Paperozi';
 }
 
-#overlay{position:fixed;width:100%;height:100%;display:none;}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;display:none; z-index: 900;}
 #overlay.open{display:block;}
 #sideMenu{
-  position:fixed;left:-280px;width:260px;height:100%;
-  background:var(--card);padding:20px;transition:0.3s;
+  position:fixed;top:0;left:-280px;width:260px;height:100%;
+  background:var(--card);padding:20px;transition:0.3s; z-index: 999;
 }
 #sideMenu.open{left:0;}
-.menuUser{display:flex;justify-content:space-between;}
+.menuUser{display:flex;justify-content:space-between; margin-bottom: 8px;}
 </style>
 </head>
 
@@ -102,7 +152,7 @@ body{
 <div class="header">
   <div class="left">
     <button class="menuBtn" onclick="toggleMenu()">☰</button>
-    <div class="title">KST Nextory</div>
+    <div class="title" onclick="goHome()">KST Nextory</div>
   </div>
 </div>
 
@@ -112,8 +162,8 @@ body{
   <h3>사용자</h3>
   <div id="menuUsers"></div>
   <hr>
-  <button onclick="toggleDark()">🌙 다크모드</button><br><br>
-  <button onclick="changeUser()">👤 계정 변경</button>
+  <button onclick="toggleDark()" style="padding:8px; width:100%; text-align:left; border:none; background:none; cursor:pointer; font-family:'Paperozi'; color:var(--text);">🌙 다크모드</button><br>
+  <button onclick="changeUser()" style="padding:8px; width:100%; text-align:left; border:none; background:none; cursor:pointer; font-family:'Paperozi'; color:var(--text);">👤 계정 변경</button>
 </div>
 
 <div id="story"></div>
@@ -124,14 +174,24 @@ body{
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
     <div id="modalContent"></div>
-    <button onclick="submitModal()">확인</button>
-    <button onclick="closeModal()">취소</button>
+    <div style="text-align:right;">
+      <button onclick="submitModal()" style="background:#4F7CFF; color:white;">확인</button>
+      <button onclick="closeModal()" style="background:#eee; color:#333;">취소</button>
+    </div>
   </div>
 </div>
 
 <script>
+const fab = document.getElementById("fab");
+const scrollBtn = document.getElementById("scrollBtn");
+const sideMenu = document.getElementById("sideMenu");
+const overlay = document.getElementById("overlay");
+const menuUsers = document.getElementById("menuUsers");
+const modal = document.getElementById("modal");
+const modalTitle = document.getElementById("modalTitle");
+const modalContent = document.getElementById("modalContent");
+const story = document.getElementById("story");
 
-/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCX3ucF2Q-ZKLL4degzN4wEOx_T_Djc2UI",
   authDomain: "kstnextory.firebaseapp.com",
@@ -142,30 +202,34 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const docRef = db.collection("stories").doc("main");
 
-/* STATE */
 let state={themes:[],users:[],colors:{},currentUser:""};
 let modalConfig={},selectedUser=null,isLoaded=false;
 
 const palette=["#ff6b6b","#6bcB77","#4d96ff","#ffd93d","#b983ff"];
 
-/* 초기 데이터 */
-async function init(){
-  const d=await docRef.get();
-  if(!d.exists){
-    await docRef.set({
-      themes:[],
-      users:["한이"],
-      colors:{ "한이":"#ff6b6b" },
-      currentUser:"한이"
-    });
-  }
+/* 홈으로 이동 함수 */
+function goHome() {
+  selectedUser = null;
+  render();
 }
 
-/* REALTIME */
+async function init(){
+  try {
+    const d=await docRef.get();
+    if(!d.exists){
+      await docRef.set({
+        themes:[],
+        users:["한이"],
+        colors:{ "한이":"#ff6b6b" },
+        currentUser:"한이"
+      });
+    }
+  } catch(e) { console.error(e); }
+}
+
 docRef.onSnapshot(doc=>{
   if(doc.exists){
     state=doc.data();
-
     state.themes=state.themes||[];
     state.users=state.users||[];
     state.colors=state.colors||{};
@@ -173,7 +237,6 @@ docRef.onSnapshot(doc=>{
     if(!state.currentUser){
       state.currentUser=state.users[0];
     }
-
     state.users.forEach((u,i)=>{
       if(!state.colors[u]){
         state.colors[u]=palette[i%palette.length];
@@ -186,13 +249,11 @@ docRef.onSnapshot(doc=>{
   }
 });
 
-/* SAVE */
 function save(){ if(isLoaded) docRef.set(state); }
 
-/* USER */
 function changeUser(){
   openModal({
-    title:"사용자",
+    title:"사용자 변경",
     type:"select",
     options:["한이","바가","라면","진지","조교","제갈태윤","진상","지후","마토","준수T"],
     onSubmit:n=>{
@@ -206,7 +267,6 @@ function changeUser(){
   });
 }
 
-/* MENU */
 function toggleMenu(){
   sideMenu.classList.toggle("open");
   overlay.classList.toggle("open");
@@ -216,24 +276,25 @@ function closeMenu(){
   overlay.classList.remove("open");
 }
 
-/* MODAL */
-function openModal(c,def=""){
-  modalConfig=c;
-  modalTitle.innerText=c.title;
+function openModal(config, def=""){
+  modalConfig=config;
+  modalTitle.innerText=config.title;
   modalContent.innerHTML="";
 
-  if(c.type==="text"){
+  if(config.type==="text"){
     const i=document.createElement("input");
-    i.value=def;i.id="mInput";
+    i.value=def; i.id="mInput";
     modalContent.appendChild(i);
+    setTimeout(() => i.focus(), 100);
   }
 
-  if(c.type==="select"){
+  if(config.type==="select"){
     const s=document.createElement("select");
     s.id="mSelect";
-    c.options.forEach(o=>{
+    config.options.forEach(o=>{
       const op=document.createElement("option");
-      op.value=o;op.innerText=o;
+      op.value=o; op.innerText=o;
+      if(o === state.currentUser) op.selected = true;
       s.appendChild(op);
     });
     modalContent.appendChild(s);
@@ -243,159 +304,132 @@ function openModal(c,def=""){
 }
 
 function submitModal(){
-  let v=document.getElementById("mInput")?.value ||
-        document.getElementById("mSelect")?.value;
-  if(!v) return;
+  let v=document.getElementById("mInput")?.value || document.getElementById("mSelect")?.value;
+  if(!v) { alert("내용을 입력해주세요!"); return; }
   modal.style.display="none";
   modalConfig.onSubmit(v);
 }
-function closeModal(){ modal.style.display="none"; }
 
-/* CREATE */
+function closeModal(){ 
+  modal.style.display="none"; 
+  if(modalConfig.onCancel) modalConfig.onCancel();
+}
+
 fab.onclick=()=>{
-  if(!state.currentUser){
-    alert("사용자 먼저 설정!");
-    return;
-  }
-
+  if(!state.currentUser){ alert("좌측 상단 메뉴(☰)에서 사용자를 먼저 설정해주세요!"); return; }
   openModal({
-    title:"주제",
+    title:"주제 추가",
     type:"text",
     onSubmit:async t=>{
-      let theme={
-        id:Date.now()+"",
-        title:t,
-        owner:state.currentUser,
-        lines:[],
-        likes:[]
-      };
-
+      let theme={ id:Date.now()+"", title:t, owner:state.currentUser, lines:[], likes:[] };
+      let isCancelled = false;
       for(let c of t){
+        if(isCancelled) break;
         const txt=await new Promise(res=>{
-          openModal({title:c,type:"text",onSubmit:res});
+          openModal({ title:`'${c}' (N행시)`, type:"text", onSubmit:res, onCancel: () => res(null) });
         });
+        if(txt === null) { isCancelled = true; break; }
         theme.lines.push({id:Math.random()+"",letter:c,text:txt});
       }
-
-      state.themes.push(theme);
-      save();
-    }
+      if(!isCancelled && theme.lines.length > 0) { state.themes.push(theme); save(); render(); }
+    },
+    onCancel: () => {} 
   });
 };
 
-/* 좋아요 */
 function toggleLike(tid){
   const t=state.themes.find(x=>x.id===tid);
   if(!t.likes) t.likes=[];
-
   const i=t.likes.indexOf(state.currentUser);
-  if(i>-1) t.likes.splice(i,1);
-  else t.likes.push(state.currentUser);
-
+  if(i>-1) t.likes.splice(i,1); else t.likes.push(state.currentUser);
   save();
 }
 
-/* 수정 */
+function toggleOptionMenu(lid, event) {
+  event.stopPropagation();
+  const targetMenu = document.getElementById(`menu-${lid}`);
+  const isCurrentlyOpen = targetMenu.classList.contains('show');
+  document.querySelectorAll('.line-menu').forEach(m => m.classList.remove('show'));
+  if (!isCurrentlyOpen) targetMenu.classList.add('show');
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.line-menu').forEach(m => m.classList.remove('show'));
+});
+
 function editLine(tid,lid){
   const t=state.themes.find(x=>x.id===tid);
   const l=t.lines.find(x=>x.id===lid);
-
-  if(state.currentUser !== t.owner){
-    alert("작성자만 수정 가능!");
-    return;
-  }
-
   openModal({
-    title:"수정",
+    title:"내용 수정",
     type:"text",
-    onSubmit:txt=>{
-      l.text=txt;
-      save();
-    }
-  },l.text);
+    onSubmit:txt=>{ l.text=txt; save(); render(); }
+  }, l.text);
 }
 
-/* 삭제 */
 function deleteLine(tid,lid){
   const t=state.themes.find(x=>x.id===tid);
-
-  if(state.currentUser !== t.owner){
-    alert("작성자만 삭제 가능!");
-    return;
-  }
-
-  if(!confirm("삭제할까요?")) return;
-
+  if(!confirm("이 줄을 정말 삭제하시겠습니까?")) return;
   t.lines = t.lines.filter(x=>x.id!==lid);
-
-  if(t.lines.length===0){
-    state.themes = state.themes.filter(x=>x.id!==tid);
-  }
-
-  save();
+  if(t.lines.length===0){ state.themes = state.themes.filter(x=>x.id!==tid); }
+  save(); render();
 }
 
-/* FILTER */
 function filterByUser(u){
   selectedUser = selectedUser===u ? null : u;
   render();
 }
 
-/* RENDER */
 function render(){
   story.innerHTML="";
-
-  const list = selectedUser
-    ? state.themes.filter(t=>t.owner===selectedUser)
-    : state.themes;
+  const list = selectedUser ? state.themes.filter(t=>t.owner===selectedUser) : state.themes;
 
   list.forEach(t=>{
     if(!t.lines) t.lines=[];
     if(!t.likes) t.likes=[];
-
     const c=document.createElement("div");
     c.className="card";
-
     c.innerHTML=`
-      <div style="display:flex;justify-content:space-between;">
-        <b>${t.title}</b>
+      <div style="display:flex;justify-content:space-between; margin-bottom:10px;">
+        <b style="font-size:18px;">${t.title}</b>
         <span onclick="filterByUser('${t.owner}')"
-          style="color:${state.colors[t.owner]};cursor:pointer;font-size:12px;">
+          style="color:${state.colors[t.owner]};cursor:pointer;font-size:13px; font-weight:bold;">
           ${t.owner}
         </span>
-      </div>
-
-      <div class="like" onclick="toggleLike('${t.id}')">
-        ${t.likes.includes(state.currentUser) ? "❤️" : "🤍"} ${t.likes.length}
       </div>
     `;
 
     t.lines.forEach(l=>{
       const d=document.createElement("div");
       d.className="line";
-      d.innerText=`${l.letter}: ${l.text}`;
-
-      d.onclick=()=>{
-        if(state.currentUser !== t.owner) return;
-        const action=prompt("수정 / 삭제");
-        if(action==="수정") editLine(t.id,l.id);
-        if(action==="삭제") deleteLine(t.id,l.id);
-      };
-
+      let actionBtns = "";
+      if(state.currentUser === t.owner) {
+        actionBtns = `
+          <div>
+            <button class="more-btn" onclick="toggleOptionMenu('${l.id}', event)">⋮</button>
+            <div class="line-menu" id="menu-${l.id}">
+              <button onclick="editLine('${t.id}','${l.id}')">수정</button>
+              <button class="btn-del" onclick="deleteLine('${t.id}','${l.id}')">삭제</button>
+            </div>
+          </div>
+        `;
+      }
+      d.innerHTML=`<span><b>${l.letter}</b>: ${l.text}</span> ${actionBtns}`;
       c.appendChild(d);
     });
 
+    const likeDiv = document.createElement("div");
+    likeDiv.className = "like";
+    likeDiv.onclick = () => toggleLike(t.id);
+    likeDiv.innerHTML = `${t.likes.includes(state.currentUser) ? "❤️" : "🤍"} ${t.likes.length}`;
+    c.appendChild(likeDiv);
     story.appendChild(c);
   });
 }
 
-/* SCROLL */
-const scrollBtn=document.getElementById("scrollBtn");
 let timer;
-
 window.addEventListener("scroll",()=>{
   const max=document.body.scrollHeight - window.innerHeight;
-
   if(window.scrollY < max/2){
     scrollBtn.innerText="⬇";
     scrollBtn.onclick=()=>window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
@@ -403,32 +437,25 @@ window.addEventListener("scroll",()=>{
     scrollBtn.innerText="⬆";
     scrollBtn.onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
   }
-
   scrollBtn.classList.add("show");
   clearTimeout(timer);
-  timer=setTimeout(()=>scrollBtn.classList.remove("show"),1000);
+  timer=setTimeout(()=>scrollBtn.classList.remove("show"),1500);
 });
 
-/* DARK */
-function toggleDark(){
-  document.body.classList.toggle("dark");
-}
+function toggleDark(){ document.body.classList.toggle("dark"); }
 
-/* USERS MENU */
 function renderMenuUsers(){
   menuUsers.innerHTML="";
   state.users.forEach(u=>{
     const div=document.createElement("div");
     div.className="menuUser";
-    div.innerHTML=`<span style="color:${state.colors[u]}">${u}</span>`;
+    div.innerHTML=`<span style="color:${state.colors[u]}; font-weight:bold;">${u}</span> ${u === state.currentUser ? '<span>(현재)</span>' : ''}`;
     menuUsers.appendChild(div);
   });
 }
 
-/* 시작 */
 init();
 
 </script>
-
 </body>
 </html>
