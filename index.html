@@ -194,7 +194,7 @@ function changeUser(){
   openModal({
     title:"사용자",
     type:"select",
-    options:["한이","바가","라면","지후"],
+    options:["한이","바가","라면","진지","조교","제갈태윤","진상","지후","마토","준수T"],
     onSubmit:n=>{
       state.currentUser=n;
       if(!state.users.includes(n)){
@@ -267,7 +267,7 @@ fab.onclick=()=>{
         title:t,
         owner:state.currentUser,
         lines:[],
-        likes:[] // ⭐ 좋아요 추가
+        likes:[]
       };
 
       for(let c of t){
@@ -293,6 +293,52 @@ function toggleLike(tid){
   else t.likes.push(state.currentUser);
 
   save();
+}
+
+/* 수정 */
+function editLine(tid,lid){
+  const t=state.themes.find(x=>x.id===tid);
+  const l=t.lines.find(x=>x.id===lid);
+
+  if(state.currentUser !== t.owner){
+    alert("작성자만 수정 가능!");
+    return;
+  }
+
+  openModal({
+    title:"수정",
+    type:"text",
+    onSubmit:txt=>{
+      l.text=txt;
+      save();
+    }
+  },l.text);
+}
+
+/* 삭제 */
+function deleteLine(tid,lid){
+  const t=state.themes.find(x=>x.id===tid);
+
+  if(state.currentUser !== t.owner){
+    alert("작성자만 삭제 가능!");
+    return;
+  }
+
+  if(!confirm("삭제할까요?")) return;
+
+  t.lines = t.lines.filter(x=>x.id!==lid);
+
+  if(t.lines.length===0){
+    state.themes = state.themes.filter(x=>x.id!==tid);
+  }
+
+  save();
+}
+
+/* FILTER */
+function filterByUser(u){
+  selectedUser = selectedUser===u ? null : u;
+  render();
 }
 
 /* RENDER */
@@ -328,17 +374,19 @@ function render(){
       const d=document.createElement("div");
       d.className="line";
       d.innerText=`${l.letter}: ${l.text}`;
+
+      d.onclick=()=>{
+        if(state.currentUser !== t.owner) return;
+        const action=prompt("수정 / 삭제");
+        if(action==="수정") editLine(t.id,l.id);
+        if(action==="삭제") deleteLine(t.id,l.id);
+      };
+
       c.appendChild(d);
     });
 
     story.appendChild(c);
   });
-}
-
-/* FILTER */
-function filterByUser(u){
-  selectedUser = selectedUser===u ? null : u;
-  render();
 }
 
 /* SCROLL */
@@ -350,16 +398,10 @@ window.addEventListener("scroll",()=>{
 
   if(window.scrollY < max/2){
     scrollBtn.innerText="⬇";
-    scrollBtn.onclick=()=>window.scrollTo({
-      top:document.body.scrollHeight,
-      behavior:"smooth"
-    });
+    scrollBtn.onclick=()=>window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
   }else{
     scrollBtn.innerText="⬆";
-    scrollBtn.onclick=()=>window.scrollTo({
-      top:0,
-      behavior:"smooth"
-    });
+    scrollBtn.onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
   }
 
   scrollBtn.classList.add("show");
